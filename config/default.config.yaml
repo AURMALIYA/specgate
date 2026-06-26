@@ -1,0 +1,175 @@
+# SpecGate default configuration.
+#
+# This is a documented, platform-agnostic baseline. It defines the *shape* of a
+# governance policy with sensible generic defaults. Organizations copy this and
+# fill in their own sensitive surfaces, reviewer roles, and constitution.
+#
+# Nothing here names a specific platform, vendor, or product — that knowledge
+# belongs in an org-specific config (see config/example-org/config.yaml).
+
+version: "1.0.0"
+org: "default"
+
+changeTaxonomy:
+  categories:
+    - id: presentation
+      label: "Presentation / UI"
+      description: "User-facing display, layout, and copy with no logic or data changes."
+      sensitivity: low
+      aiAuthorityCeiling: draft-and-apply
+      minTier: GREEN
+      restrictedDomain: false
+
+    - id: read-only-integration
+      label: "Read-only integration"
+      description: "Consuming external data without mutating it."
+      sensitivity: low
+      aiAuthorityCeiling: draft-then-verify
+      minTier: GREEN
+      restrictedDomain: false
+
+    - id: business-logic
+      label: "Business logic"
+      description: "Transactional behavior, calculations, and state transitions."
+      sensitivity: medium
+      aiAuthorityCeiling: draft-then-verify
+      minTier: YELLOW
+      restrictedDomain: false
+
+    - id: data-migration
+      label: "Data migration"
+      description: "Schema or data transformations requiring a parity oracle."
+      sensitivity: high
+      aiAuthorityCeiling: draft-with-review
+      minTier: YELLOW
+      restrictedDomain: false
+
+    - id: access-control
+      label: "Access control & identity"
+      description: "Authentication, authorization, roles, and permissions."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+    - id: data-governance
+      label: "Data governance & regulated data"
+      description: "Handling of regulated, personal, or financially material data."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+    - id: money-movement
+      label: "Money movement"
+      description: "Initiating, authorizing, or settling financial transactions."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+sensitiveSurfaces:
+  - id: access-control-surface
+    label: "Access-control & identity surface"
+    restricted: true
+    forcesTier: RED
+    matchers:
+      pathGlobs:
+        - "**/auth/**"
+        - "**/authz/**"
+        - "**/permissions/**"
+      metadataFieldPatterns:
+        - "(?i)access[_-]?control"
+      keywords:
+        - "authentication"
+        - "authorization"
+        - "role assignment"
+        - "permission grant"
+      contractSignals:
+        - "(?i)/(login|token|session|permission)"
+
+  - id: regulated-data-surface
+    label: "Regulated / personal data surface"
+    restricted: true
+    forcesTier: RED
+    matchers:
+      pathGlobs:
+        - "**/pii/**"
+        - "**/regulated/**"
+      metadataFieldPatterns: []
+      keywords:
+        - "regulated data"
+        - "personal data"
+        - "financial record"
+      contractSignals: []
+
+dataScopes:
+  - own
+  - entity
+  - all
+
+enforcementLayers:
+  - presentation
+  - application
+  - data
+
+reviewerMatrix:
+  GREEN:
+    requiredApproverRoles:
+      - peer-reviewer
+    verificationDepth: "Automated checks only."
+    minApprovals: 1
+  YELLOW:
+    requiredApproverRoles:
+      - peer-reviewer
+      - domain-owner
+    verificationDepth: "Automated checks plus independent functional verification."
+    minApprovals: 2
+  RED:
+    requiredApproverRoles:
+      - domain-owner
+      - security-reviewer
+      - data-governance-reviewer
+    verificationDepth: "Human-designed change with independent security/data verification and rollback validation."
+    minApprovals: 3
+
+dataClassification:
+  regulatedDataPatterns:
+    - "\\b\\d{3}-\\d{2}-\\d{4}\\b"            # generic 9-digit national-id shape
+    - "\\b\\d{13,19}\\b"                       # long card-like numeric runs
+  sensitiveFlags:
+    - regulated
+    - personal-data
+    - financial
+
+constitution:
+  rules:
+    - id: no-regulated-data-in-context
+      description: "No regulated or personal data tokens may appear in any prompt-context file; use synthetic data only."
+      severity: block
+      check: auto
+      evaluator: no-regulated-data-tokens
+    - id: rollback-reference-present
+      description: "A rollback reference must be present in the Verification plan for any promotable change."
+      severity: block
+      check: auto
+      evaluator: rollback-reference-present
+    - id: generator-verifier-differ
+      description: "The actor that generates a change may never certify it."
+      severity: block
+      check: auto
+      evaluator: generator-verifier-differ
+    - id: standard-first-justification
+      description: "A written justification must exist when a custom/non-standard surface is used."
+      severity: warn
+      check: auto
+      evaluator: standard-first-justification
+    - id: spec-owner-accountable
+      description: "Every spec must name an accountable owner who is a real, identifiable person or role."
+      severity: warn
+      check: manual
+
+semantic:
+  enabled: false
+  model: "claude-sonnet-4-6"
+  maxRelatedSpecs: 5

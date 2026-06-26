@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/scm-adapter" },
+    { "path": "packages/spec-schema" },
+    { "path": "packages/policy" },
+    { "path": "packages/gate" },
+    { "path": "packages/cli" },
+    { "path": "apps/action" }
+  ]
+}

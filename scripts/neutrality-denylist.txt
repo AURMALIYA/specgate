@@ -1,0 +1,45 @@
+# Neutrality denylist — platform / vendor / product / framework identifiers that
+# must NEVER appear in engine packages. One token per line; lines starting with
+# `#` are comments. Matching is case-insensitive and word-boundary aware.
+#
+# The example-org platform name ("northwind") is included on purpose: it proves
+# the engine never references the worked example, only its config does.
+
+northwind
+salesforce
+servicenow
+workday
+sap
+oracle
+stripe
+paypal
+adyen
+braintree
+okta
+auth0
+cognito
+keycloak
+aws
+gcp
+azure
+kubernetes
+terraform
+react
+angular
+svelte
+django
+rails
+laravel
+spring-boot
+anthropic
+openai
+claude
+gpt
+gemini
+github
+gitlab
+bitbucket
+jira
+confluence
+snowflake
+databricks

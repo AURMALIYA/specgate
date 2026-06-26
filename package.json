@@ -1,0 +1,24 @@
+{
+  "name": "specgate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A platform-agnostic governance layer between spec authoring and code generation.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --build",
+    "specgate": "node packages/cli/dist/bin.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}

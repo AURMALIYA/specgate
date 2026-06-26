@@ -1,0 +1,35 @@
+name: spec-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Unit tests (engines, neutrality, fixtures)
+        run: pnpm test
+
+      - name: Gate platform's own specs (default config)
+        run: node packages/cli/dist/bin.js gate specs --config config/default.config.yaml
+
+      - name: Gate example-org specs
+        run: node packages/cli/dist/bin.js gate config/example-org/specs --config config/example-org/config.yaml

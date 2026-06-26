@@ -1,0 +1,16 @@
+name: "SpecGate"
+description: "Spec-driven development governance gate: schema, EARS, constitution, and (Phase 2+) tier & conflict checks."
+inputs:
+  specs:
+    description: "Whitespace/comma/newline-separated spec paths or directories to gate."
+    required: false
+    default: "specs"
+  config:
+    description: "Path to the org SpecGate config (YAML)."
+    required: true
+runs:
+  using: "node20"
+  main: "dist/main.js"
+branding:
+  icon: "shield"
+  color: "purple"

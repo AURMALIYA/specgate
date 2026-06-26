@@ -1,0 +1,197 @@
+# Example org config — "Northwind Commerce Cloud" (a fictional platform).
+#
+# This is a fully worked example showing how an organization specializes the
+# default baseline with platform-specific surfaces, paths, roles, and rules.
+# Everything platform-specific lives HERE, never in engine code. The string
+# "northwind" appears in the denylist test precisely to prove the engine
+# packages never reference this example.
+
+version: "2.4.0"
+org: "northwind-commerce-cloud"
+
+changeTaxonomy:
+  categories:
+    - id: storefront-ui
+      label: "Storefront UI"
+      description: "Customer-facing storefront pages and components."
+      sensitivity: low
+      aiAuthorityCeiling: draft-and-apply
+      minTier: GREEN
+      restrictedDomain: false
+
+    - id: catalog-readonly
+      label: "Catalog read-only integration"
+      description: "Reading product/catalog data from the Northwind catalog service."
+      sensitivity: low
+      aiAuthorityCeiling: draft-then-verify
+      minTier: GREEN
+      restrictedDomain: false
+
+    - id: cart-checkout-logic
+      label: "Cart & checkout logic"
+      description: "Cart math, promotions, tax calculation, and checkout state machine."
+      sensitivity: medium
+      aiAuthorityCeiling: draft-then-verify
+      minTier: YELLOW
+      restrictedDomain: false
+
+    - id: order-data-migration
+      label: "Order data migration"
+      description: "Migrating order records between Northwind ledger schema versions."
+      sensitivity: high
+      aiAuthorityCeiling: draft-with-review
+      minTier: YELLOW
+      restrictedDomain: false
+
+    - id: customer-identity
+      label: "Customer identity & access"
+      description: "Northwind IAM: sign-in, roles, merchant permissions, scopes."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+    - id: payments-settlement
+      label: "Payments & settlement"
+      description: "Authorizing and settling payments through the Northwind payments rail."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+    - id: pci-data-handling
+      label: "Cardholder & regulated data handling"
+      description: "Storage or processing of cardholder and regulated customer data."
+      sensitivity: restricted
+      aiAuthorityCeiling: scaffold-only
+      minTier: RED
+      restrictedDomain: true
+
+sensitiveSurfaces:
+  - id: nw-iam-surface
+    label: "Northwind IAM surface"
+    restricted: true
+    forcesTier: RED
+    matchers:
+      pathGlobs:
+        - "services/iam/**"
+        - "**/merchant-permissions/**"
+        - "**/scopes/**"
+      metadataFieldPatterns:
+        - "(?i)identity|access|merchant[_-]?role"
+      keywords:
+        - "merchant role"
+        - "permission scope"
+        - "sign-in"
+        - "session token"
+      contractSignals:
+        - "(?i)/iam/(login|token|scopes)"
+
+  - id: nw-payments-surface
+    label: "Northwind payments rail surface"
+    restricted: true
+    forcesTier: RED
+    matchers:
+      pathGlobs:
+        - "services/payments/**"
+        - "**/settlement/**"
+      metadataFieldPatterns:
+        - "(?i)payment|settlement|payout"
+      keywords:
+        - "authorize payment"
+        - "settle"
+        - "payout"
+        - "refund"
+      contractSignals:
+        - "(?i)/payments/(authorize|capture|settle|refund)"
+
+  - id: nw-cardholder-data-surface
+    label: "Cardholder / regulated data surface"
+    restricted: true
+    forcesTier: RED
+    matchers:
+      pathGlobs:
+        - "**/cardholder/**"
+        - "**/regulated/**"
+      metadataFieldPatterns: []
+      keywords:
+        - "cardholder data"
+        - "pan"
+        - "regulated customer data"
+      contractSignals: []
+
+dataScopes:
+  - own
+  - merchant
+  - all
+
+enforcementLayers:
+  - storefront
+  - api-gateway
+  - service
+  - data-store
+
+reviewerMatrix:
+  GREEN:
+    requiredApproverRoles:
+      - frontend-peer
+    verificationDepth: "Automated checks only."
+    minApprovals: 1
+  YELLOW:
+    requiredApproverRoles:
+      - frontend-peer
+      - commerce-domain-owner
+    verificationDepth: "Automated checks plus independent functional verification with parity oracle for migrations."
+    minApprovals: 2
+  RED:
+    requiredApproverRoles:
+      - commerce-domain-owner
+      - security-reviewer
+      - pci-compliance-officer
+    verificationDepth: "Human-designed change; independent security + PCI verification; rollback validation mandatory."
+    minApprovals: 3
+
+dataClassification:
+  regulatedDataPatterns:
+    - "\\b\\d{3}-\\d{2}-\\d{4}\\b"
+    - "\\b(?:\\d[ -]*?){13,19}\\b"
+  sensitiveFlags:
+    - regulated
+    - cardholder
+    - pii
+
+constitution:
+  rules:
+    - id: no-regulated-data-in-context
+      description: "No cardholder, PII, or regulated data tokens in any prompt-context file; synthetic only."
+      severity: block
+      check: auto
+      evaluator: no-regulated-data-tokens
+    - id: rollback-reference-present
+      description: "A rollback reference must be present in the Verification plan for any promotable change."
+      severity: block
+      check: auto
+      evaluator: rollback-reference-present
+    - id: generator-verifier-differ
+      description: "The actor that generates a change may never certify it."
+      severity: block
+      check: auto
+      evaluator: generator-verifier-differ
+    - id: standard-first-justification
+      description: "Custom storefront components require a written justification (standard-first principle)."
+      severity: warn
+      check: auto
+      evaluator: standard-first-justification
+      params:
+        customKeywords:
+          - "custom component"
+          - "bespoke widget"
+    - id: pci-scope-documented
+      description: "RED payments/cardholder specs must document PCI scope impact in the data classification section."
+      severity: block
+      check: manual
+
+semantic:
+  enabled: true
+  model: "claude-sonnet-4-6"
+  maxRelatedSpecs: 5

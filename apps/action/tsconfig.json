@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    { "path": "../../packages/config" },
+    { "path": "../../packages/gate" },
+    { "path": "../../packages/cli" },
+    { "path": "../../packages/scm-adapter" }
+  ],
+  "include": ["src/**/*.ts"]
+}
