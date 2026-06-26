@@ -26,11 +26,11 @@ packages/
   config/        zod config schema + loader + tier helpers      (neutral)
   spec-schema/   frontmatter + section + EARS + access-matrix parsing & validation
   policy/        constitution-as-code: rules + auto evaluators
-  risk-tier/     (Phase 2) sensitive-surface scan + tier classifier + escalation
-  registry/      (Phase 2) ingest specs -> model + graph
-  conflict-engine/ (Phase 2) deterministic + (Phase 4) semantic checks
-  gate/          orchestrates schema -> policy (-> tier -> conflicts) into one report
-  cli/           `specgate validate | gate | tier | conflicts`
+  risk-tier/     sensitive-surface scan + tier classifier + hidden-RED escalation
+  registry/      ingest specs -> model + graph (access rows, capabilities, deps, contracts)
+  conflict-engine/ deterministic cross-spec checks + (Phase 4) semantic advisory
+  gate/          orchestrates schema -> policy -> tier -> conflicts; runGate + runGateBatch
+  cli/           `specgate validate | tier | conflicts | gate`
   scm-adapter/   neutral interface + GitHub implementation
 apps/
   action/        GitHub Action entrypoint that runs the gate on changed specs
@@ -68,7 +68,9 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
 - [x] Phase 0 — scaffold, config schema + default + example-org, CLI `--help`, neutrality test.
 - [x] Phase 1 — standardization gate: `spec-schema` + `policy` + `gate`, CLI `validate`/`gate`,
       GitHub Action with annotations.
-- [ ] Phase 2 — registry + deterministic conflicts + tier engine (CLI `tier`/`conflicts`).
+- [x] Phase 2 — `registry` + `risk-tier` (sensitive-surface scan → hidden-RED escalation) +
+      deterministic `conflict-engine`; CLI `tier`/`conflicts`; batch `gate` with cross-spec
+      conflicts; Action annotates conflicts and blocks on `block` severity.
 - [ ] Phase 3 — approval state machine + verification harness + provenance + drift.
 - [ ] Phase 4 — semantic advisory layer + dashboard + metrics.
 

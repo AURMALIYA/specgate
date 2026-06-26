@@ -5,12 +5,9 @@
     "outDir": "dist"
   },
   "references": [
-    { "path": "../config" },
-    { "path": "../spec-schema" },
-    { "path": "../policy" },
+    { "path": "../registry" },
     { "path": "../risk-tier" },
-    { "path": "../conflict-engine" },
-    { "path": "../gate" }
+    { "path": "../spec-schema" }
   ],
   "include": ["src/**/*.ts"]
 }

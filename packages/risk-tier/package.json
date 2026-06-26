@@ -1,5 +1,5 @@
 {
-  "name": "@specgate/gate",
+  "name": "@specgate/risk-tier",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,10 +13,6 @@
   },
   "dependencies": {
     "@specgate/config": "workspace:*",
-    "@specgate/spec-schema": "workspace:*",
-    "@specgate/policy": "workspace:*",
-    "@specgate/risk-tier": "workspace:*",
-    "@specgate/registry": "workspace:*",
-    "@specgate/conflict-engine": "workspace:*"
+    "@specgate/spec-schema": "workspace:*"
   }
 }

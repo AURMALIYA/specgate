@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@specgate/config";
 import { describe, expect, it } from "vitest";
-import { runGate } from "../src/gate.js";
+import { runGate, runGateBatch } from "../src/gate.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const exampleCfg = loadConfig(resolve(ROOT, "config/example-org/config.yaml"));
@@ -40,5 +40,40 @@ describe("runGate", () => {
       const report = runGate({ raw: read(rel), config: defaultCfg, path: rel });
       expect(report.ok, `${rel}: ${JSON.stringify(report.findings, null, 2)}`).toBe(true);
     }
+  });
+});
+
+describe("runGateBatch — Phase 2 done-criteria", () => {
+  it("(a) two specs with contradictory access rows produce a blocking conflict naming both", () => {
+    const batch = runGateBatch(
+      [
+        { raw: read("config/example-org/specs-conflict/order-notes-support.md"), path: "support.md" },
+        { raw: read("config/example-org/specs-conflict/order-notes-readonly.md"), path: "readonly.md" },
+      ],
+      exampleCfg,
+    );
+    expect(batch.ok).toBe(false);
+    const conflict = batch.conflicts.find((c) => c.type === "access-matrix");
+    expect(conflict).toBeDefined();
+    expect(conflict!.severity).toBe("block");
+    expect(conflict!.specIds.sort()).toEqual(["NW-NOTES-READONLY", "NW-NOTES-SUPPORT"]);
+    // The conflict is attached to both specs' reports.
+    for (const r of batch.reports) {
+      expect(r.findings.some((f) => f.source === "conflict")).toBe(true);
+    }
+  });
+
+  it("(b) a GREEN spec touching the identity surface is force-escalated to RED and blocks", () => {
+    const batch = runGateBatch(
+      [{ raw: read("config/example-org/specs-conflict/hidden-red-merchant-roles.md"), path: "roles.md" }],
+      exampleCfg,
+    );
+    const report = batch.reports[0]!;
+    expect(report.tier?.declaredTier).toBe("GREEN");
+    expect(report.tier?.finalTier).toBe("RED");
+    expect(report.tier?.escalated).toBe(true);
+    expect(report.findings.some((f) => f.code === "tier.hidden-red")).toBe(true);
+    expect(report.tier?.requiredApproverRoles).toContain("pci-compliance-officer");
+    expect(batch.ok).toBe(false);
   });
 });

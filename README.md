@@ -37,8 +37,17 @@ node packages/cli/dist/bin.js gate specs --config config/default.config.yaml
 
 ## Status
 
-Phase 0 (scaffold) and Phase 1 (standardization gate) are complete. See [CLAUDE.md](CLAUDE.md) for
-the layout and phase roadmap, and [DECISIONS.md](DECISIONS.md) for recorded assumptions.
+Phases 0–2 are complete: scaffold, the standardization gate, and the registry + risk-tier engine
+(with hidden-RED escalation) + deterministic conflict engine. See [CLAUDE.md](CLAUDE.md) for the
+layout and phase roadmap, and [DECISIONS.md](DECISIONS.md) for recorded assumptions.
+
+```bash
+# Re-derive tiers and surface hidden-RED escalation
+node packages/cli/dist/bin.js tier config/example-org/specs-conflict --config config/example-org/config.yaml
+
+# Detect cross-spec conflicts (contradictory access, duplicate capability, cycles, contract breaks)
+node packages/cli/dist/bin.js conflicts config/example-org/specs-conflict --config config/example-org/config.yaml
+```
 
 ## Configuration
 

@@ -40,7 +40,7 @@ gate sections, valid EARS criteria, and a parseable access matrix.
 - IF a required frontmatter field is absent THEN THE SYSTEM SHALL block validation.
 
 # 5. Data & privacy classification
-Operates on spec documents only. No personal, regulated, or financial data is
+Operates on spec documents only. No customer or sensitive information is
 processed. Sensitivity: internal.
 
 # 6. Surface / impact

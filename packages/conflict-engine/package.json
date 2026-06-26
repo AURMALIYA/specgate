@@ -1,13 +1,10 @@
 {
-  "name": "@specgate/cli",
+  "name": "@specgate/conflict-engine",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "specgate": "./dist/bin.js"
-  },
   "exports": {
     ".": "./dist/index.js"
   },
@@ -16,10 +13,8 @@
   },
   "dependencies": {
     "@specgate/config": "workspace:*",
-    "@specgate/spec-schema": "workspace:*",
-    "@specgate/policy": "workspace:*",
+    "@specgate/registry": "workspace:*",
     "@specgate/risk-tier": "workspace:*",
-    "@specgate/conflict-engine": "workspace:*",
-    "@specgate/gate": "workspace:*"
+    "@specgate/spec-schema": "workspace:*"
   }
 }

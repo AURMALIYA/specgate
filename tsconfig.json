@@ -5,6 +5,9 @@
     { "path": "packages/scm-adapter" },
     { "path": "packages/spec-schema" },
     { "path": "packages/policy" },
+    { "path": "packages/risk-tier" },
+    { "path": "packages/registry" },
+    { "path": "packages/conflict-engine" },
     { "path": "packages/gate" },
     { "path": "packages/cli" },
     { "path": "apps/action" }

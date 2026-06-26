@@ -33,3 +33,12 @@ jobs:
 
       - name: Gate example-org specs
         run: node packages/cli/dist/bin.js gate config/example-org/specs --config config/example-org/config.yaml
+
+      - name: Demonstrate conflict detection blocks (expected to fail)
+        run: |
+          if node packages/cli/dist/bin.js gate config/example-org/specs-conflict \
+              --config config/example-org/config.yaml; then
+            echo "::error::Expected conflict/hidden-RED fixtures to block, but the gate passed." && exit 1
+          else
+            echo "Conflict + hidden-RED fixtures correctly blocked."
+          fi

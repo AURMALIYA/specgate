@@ -5,7 +5,7 @@ owner: specgate-maintainers
 team: platform
 version: 1.0.0
 status: active
-risk_tier: GREEN
+risk_tier: YELLOW
 change_categories:
   - business-logic
 provides:
@@ -39,8 +39,8 @@ in engine code.
 - THE SYSTEM SHALL load all platform-specific knowledge from configuration files.
 
 # 5. Data & privacy classification
-Operates on source code and config only. No personal or regulated data.
-Sensitivity: internal.
+Operates on source code and configuration only. No customer or sensitive
+information is processed. Sensitivity: internal.
 
 # 6. Surface / impact
 Touches the business-logic change category (a test and a constraint). No
@@ -59,7 +59,7 @@ on any hit. Rollback reference: the test is additive; disabling it reverts to no
 neutrality enforcement.
 
 # 10. Risk tier & approvers
-Risk tier: GREEN. Required approver role: peer-reviewer.
+Risk tier: YELLOW. Required approver roles: peer-reviewer, domain-owner.
 
 # 11. Out of scope / open questions
 Out of scope: neutrality of adapter packages, which are vendor-specific by design.

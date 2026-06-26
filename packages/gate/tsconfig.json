@@ -7,7 +7,10 @@
   "references": [
     { "path": "../config" },
     { "path": "../spec-schema" },
-    { "path": "../policy" }
+    { "path": "../policy" },
+    { "path": "../risk-tier" },
+    { "path": "../registry" },
+    { "path": "../conflict-engine" }
   ],
   "include": ["src/**/*.ts"]
 }

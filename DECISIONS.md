@@ -38,6 +38,38 @@ Chronological log of non-obvious choices. Reversible unless noted.
   `ScmAdapter`, so it is unit-tested with a fake adapter. Inline PR comments are downgraded to
   annotations until the REST path lands in Phase 2 (logged, never silently dropped).
 
+## Phase 2
+
+- **Tier re-derivation = max(declared, category-floor, surface-tier).** The author's tier is never
+  trusted: the final tier is the most sensitive of the declared tier, the highest `minTier` across
+  touched change categories, and the highest `forcesTier` across matched sensitive surfaces. Any
+  result above the declared tier is an escalation; a restricted-surface match that pushes a
+  sub-RED spec to RED is flagged as `hiddenRed`.
+- **Escalation is fail-safe (over-escalates).** Keyword matching is intentionally simple
+  (word-boundary, case-insensitive) and does not understand negation — a spec that says "no
+  regulated data" can still trip the `regulated data` keyword. Over-escalation to RED is the safe
+  direction. Dogfood specs are therefore worded to avoid trigger phrases; orgs should expect the
+  same and tune keywords. (Changed keyword matching from substring to word-boundary so short tokens
+  like `pan` no longer match inside `expand`.)
+- **Surface scanning inputs.** Path globs match the spec path + any `changedPaths` from a diff;
+  metadata patterns match frontmatter values; keywords match body text; contract signals match the
+  Integration-contracts section + declared contract names/refs. A diff is optional — the scan works
+  on spec content alone and tightens when a diff is supplied.
+- **Hidden-RED is a per-spec finding, not cross-spec**, so it is computed in the gate's per-spec
+  tier step (via `risk-tier`) and rendered through `conflict-engine`'s `hiddenRedFinding` helper to
+  keep one finding shape. The other deterministic checks (access, capability, cycle, contract) are
+  genuinely cross-spec and run over the `registry`.
+- **Contracts are structured in frontmatter** (`contracts[]` with `name`, `version`,
+  `required_fields`). A breaking change = a higher version of the same contract name dropping a
+  field that a lower version required. Works within a batch and against an optional registered
+  baseline.
+- **`validate` stays standardization-only** (`skipTier: true`); `tier`, `conflicts`, and `gate` use
+  the full batch engine. `tier` exits 1 on any escalation; `conflicts` exits 1 on any blocking
+  conflict.
+- **Conflicts are attached to every involved spec's report** (so the Action annotates the right
+  files) and also returned at the batch level. The GitHub adapter still downgrades inline review
+  comments to file-level annotations until the REST review path lands.
+
 ## Open questions (non-blocking)
 
 - Version derivation: currently `declared || sha256:<first12>`. May switch to full content-hash

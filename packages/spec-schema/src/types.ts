@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+/**
+ * A machine-readable integration contract declared by a spec. The registry
+ * versions these by name so the conflict engine can detect breaking changes
+ * against a prior registered version.
+ */
+export const SpecContract = z
+  .object({
+    name: z.string().min(1),
+    /** Monotonic integer version of this contract. */
+    version: z.number().int().nonnegative(),
+    /** Fields a consumer may rely on; removing one in a later version is breaking. */
+    required_fields: z.array(z.string().min(1)).default([]),
+    /** Optional reference to an external machine-readable contract (OpenAPI/JSON Schema/proto). */
+    ref: z.string().optional(),
+  })
+  .strict();
+export type SpecContract = z.infer<typeof SpecContract>;
+
 /** Frontmatter — the machine-readable header of a spec. */
 export const Frontmatter = z
   .object({
@@ -17,6 +35,8 @@ export const Frontmatter = z
     depends_on: z.array(z.string().min(1)).default([]),
     linked_requirements: z.array(z.string().min(1)).default([]),
     success_metric: z.string().min(1),
+    /** Declared integration contracts (optional). */
+    contracts: z.array(SpecContract).default([]),
   })
   .passthrough();
 export type Frontmatter = z.infer<typeof Frontmatter>;

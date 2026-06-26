@@ -38,12 +38,18 @@ importers:
       '@specgate/config':
         specifier: workspace:*
         version: link:../config
+      '@specgate/conflict-engine':
+        specifier: workspace:*
+        version: link:../conflict-engine
       '@specgate/gate':
         specifier: workspace:*
         version: link:../gate
       '@specgate/policy':
         specifier: workspace:*
         version: link:../policy
+      '@specgate/risk-tier':
+        specifier: workspace:*
+        version: link:../risk-tier
       '@specgate/spec-schema':
         specifier: workspace:*
         version: link:../spec-schema
@@ -57,19 +63,58 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
 
+  packages/conflict-engine:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
+      '@specgate/registry':
+        specifier: workspace:*
+        version: link:../registry
+      '@specgate/risk-tier':
+        specifier: workspace:*
+        version: link:../risk-tier
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
+
   packages/gate:
     dependencies:
       '@specgate/config':
         specifier: workspace:*
         version: link:../config
+      '@specgate/conflict-engine':
+        specifier: workspace:*
+        version: link:../conflict-engine
       '@specgate/policy':
         specifier: workspace:*
         version: link:../policy
+      '@specgate/registry':
+        specifier: workspace:*
+        version: link:../registry
+      '@specgate/risk-tier':
+        specifier: workspace:*
+        version: link:../risk-tier
       '@specgate/spec-schema':
         specifier: workspace:*
         version: link:../spec-schema
 
   packages/policy:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
+
+  packages/registry:
+    dependencies:
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
+
+  packages/risk-tier:
     dependencies:
       '@specgate/config':
         specifier: workspace:*
