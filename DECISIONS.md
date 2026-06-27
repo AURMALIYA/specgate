@@ -97,6 +97,32 @@ Chronological log of non-obvious choices. Reversible unless noted.
 - **Removed `oracle` from the neutrality denylist.** "Parity oracle" is core domain vocabulary in
   the brief; the denylist must only contain unambiguous vendor/product names.
 
+## Phase 4
+
+- **Semantic layer is split: neutral logic + vendor adapter.** The brief says call the Anthropic
+  SDK from the conflict engine, but engine packages must contain zero vendor identifiers. Resolved
+  by keeping retrieval, prompt-building, the strict-JSON schema, and result parsing neutral in
+  `conflict-engine` behind a `SemanticClient` interface, and putting the actual `@anthropic-ai/sdk`
+  call in a new `llm-adapter` package (exempt from the denylist, like `scm-adapter`). The
+  neutrality test caught "Anthropic" even in a code comment — kept the engine clean.
+- **Semantic findings always `warn`, deterministic checks always run first, and the layer fails
+  open.** Any client error or invalid output yields `[]` — the advisory layer can never block a PR.
+  It only runs when `config.semantic.enabled` and a model client is wired (config + `ANTHROPIC_API_KEY`).
+- **Anthropic client uses strict JSON** via `output_config.format` with a `json_schema` and the
+  config-pinned model (`config.semantic.model`); model id is never hard-coded. Cast through
+  `unknown` so it compiles across SDK minor versions that may not yet type `output_config`.
+- **Dashboard is a static SPA served by `apps/api`, not Next.js** (stated deviation). Reason: a Next
+  app is a separate toolchain that doesn't integrate with the repo's `tsc --build` project-reference
+  build or vitest, adds heavy deps, and would need its own build/runtime. A dependency-free
+  HTML/CSS/vanilla-JS SPA served from `apps/dashboard/public` by the API delivers the required views
+  (registry, open conflicts, tier distribution, metrics), stays offline-buildable, and keeps `main`
+  green. Swap in Next.js later behind the same JSON endpoints if desired.
+- **Metrics definitions** (`apps/api` Service): regeneration rate = fraction of generated specs with
+  >1 generation record; defect-escape rate = defects in `uat`/`production` phases over specs that
+  reached READY_FOR_UAT/DONE; gate pass/fail from ingest-time gate result; custom-vs-standard ratio
+  = specs tripping the standard-first rule over total; conflict counts by type from the deterministic
+  engine over the registry; cost per generation = mean of caller-supplied generation costs.
+
 ## Open questions (non-blocking)
 
 - Version derivation: currently `declared || sha256:<first12>`. May switch to full content-hash

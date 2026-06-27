@@ -10,6 +10,8 @@
     { "path": "../../packages/gate" },
     { "path": "../../packages/risk-tier" },
     { "path": "../../packages/registry" },
+    { "path": "../../packages/conflict-engine" },
+    { "path": "../../packages/llm-adapter" },
     { "path": "../../packages/workflow" },
     { "path": "../../packages/verification" },
     { "path": "../../packages/provenance" }

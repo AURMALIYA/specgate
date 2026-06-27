@@ -14,6 +14,8 @@
     "@specgate/gate": "workspace:*",
     "@specgate/risk-tier": "workspace:*",
     "@specgate/registry": "workspace:*",
+    "@specgate/conflict-engine": "workspace:*",
+    "@specgate/llm-adapter": "workspace:*",
     "@specgate/workflow": "workspace:*",
     "@specgate/verification": "workspace:*",
     "@specgate/provenance": "workspace:*"

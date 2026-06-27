@@ -37,10 +37,20 @@ node packages/cli/dist/bin.js gate specs --config config/default.config.yaml
 
 ## Status
 
-Phases 0–3 are complete: scaffold, the standardization gate, the registry + risk-tier engine
-(with hidden-RED escalation) + deterministic conflict engine, and the delivery-loop state machine +
-verification harness + provenance/drift composed in a backend API. See [CLAUDE.md](CLAUDE.md) for
-the layout and phase roadmap, and [DECISIONS.md](DECISIONS.md) for recorded assumptions.
+All phases (0–4) are complete: scaffold, the standardization gate, the registry + risk-tier engine
+(with hidden-RED escalation) + deterministic conflict engine, the delivery-loop state machine +
+verification harness + provenance/drift, and the advisory semantic layer + observability metrics +
+dashboard. See [CLAUDE.md](CLAUDE.md) for the layout, and [DECISIONS.md](DECISIONS.md) for assumptions.
+
+```bash
+# Run the backend API + dashboard, then open http://localhost:8787
+SPECGATE_CONFIG=config/example-org/config.yaml node apps/api/dist/main.js
+# POST specs to /ingest; browse the registry, conflicts, tier distribution, and metrics in the UI.
+```
+
+The advisory **semantic layer** (contradictory non-functionals / overlapping intent) runs only when
+`semantic.enabled` is set in config and `ANTHROPIC_API_KEY` is present; it always emits warnings,
+never blocks, runs after the deterministic checks, and fails open on any error.
 
 The delivery loop (`DRAFT → IN_REVIEW → APPROVED → GENERATING → VERIFYING → READY_FOR_UAT → DONE`,
 plus `BLOCKED`) maps onto Spec Kit's specify → clarify → plan/tasks → generate → verify, with the

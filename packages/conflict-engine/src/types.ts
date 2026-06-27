@@ -5,7 +5,8 @@ export type ConflictType =
   | "capability-ownership"
   | "hidden-red"
   | "dependency-cycle"
-  | "contract-breaking";
+  | "contract-breaking"
+  | "semantic";
 
 /** A cross-spec (or tier) conflict finding. */
 export interface ConflictFinding {

@@ -13,8 +13,10 @@ forbids" lives in `config/`, never in engine code. This is enforced by
 [`scripts/neutrality-denylist.txt`](scripts/neutrality-denylist.txt).
 
 - **Engine packages** (must stay neutral): `config`, `spec-schema`, `policy`, `risk-tier`,
-  `registry`, `conflict-engine`, `gate`, `cli`.
-- **Exempt by design** (vendor-specific): `packages/scm-adapter` and everything under `apps/`.
+  `registry`, `conflict-engine`, `workflow`, `verification`, `provenance`, `gate`, `cli`.
+- **Exempt by design** (vendor-specific): `packages/scm-adapter`, `packages/llm-adapter`, and
+  everything under `apps/`. The semantic *logic* lives neutral in `conflict-engine` behind a
+  `SemanticClient` interface; the Anthropic SDK call lives in `llm-adapter`.
 
 If you need platform-specific behavior, add it to a config schema field + the config files, not to
 engine code.
@@ -28,17 +30,18 @@ packages/
   policy/        constitution-as-code: rules + auto evaluators
   risk-tier/     sensitive-surface scan + tier classifier + hidden-RED escalation
   registry/      ingest specs -> model + graph (access rows, capabilities, deps, contracts)
-  conflict-engine/ deterministic cross-spec checks + (Phase 4) semantic advisory
+  conflict-engine/ deterministic cross-spec checks + neutral advisory-semantic layer
   workflow/      delivery-loop state machine + tier-based approval + generator!=verifier
   verification/  pluggable harness: EARS->stubs, persona/access, parity, rollback, security
   provenance/    generation provenance store + drift detector
+  llm-adapter/   ADAPTER (vendor-specific, exempt): Anthropic-backed SemanticClient
   gate/          orchestrates schema -> policy -> tier -> conflicts; runGate + runGateBatch
   cli/           `specgate validate | tier | conflicts | gate`
   scm-adapter/   neutral interface + GitHub implementation
 apps/
   action/        GitHub Action entrypoint that runs the gate on changed specs
-  api/           backend Service: ingest, state machine, verify, provenance, drift, metrics + HTTP
-  dashboard/     (Phase 4) Next.js dashboard
+  api/           backend Service + HTTP: ingest, state machine, verify, provenance, drift, semantic, metrics
+  dashboard/     static SPA (served by api) — registry, conflicts, tier distribution, metrics
 config/
   default.config.yaml      documented neutral baseline
   example-org/             a fully worked fictional org ("northwind") + fixture specs
@@ -78,6 +81,8 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
       generator≠verifier enforced structurally at VERIFYING→READY_FOR_UAT), `verification`
       harness (EARS→stubs, persona/access, parity, rollback, security), `provenance` store +
       drift detector, all composed in `apps/api` (Service + minimal HTTP server).
-- [ ] Phase 4 — semantic advisory layer + dashboard + metrics.
+- [x] Phase 4 — advisory semantic layer (neutral logic in `conflict-engine` + `llm-adapter`
+      Anthropic client, always `warn`, fails open), observability metrics in `apps/api`, and the
+      static `apps/dashboard` SPA (registry, conflicts, tier distribution, metrics).
 
 See [DECISIONS.md](DECISIONS.md) for recorded assumptions.
