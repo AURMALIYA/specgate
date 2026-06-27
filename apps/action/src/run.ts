@@ -1,11 +1,17 @@
+import { dirname } from "node:path";
 import { resolveConfig, runBatchOverFiles } from "@specgate/cli";
-import type { BatchGateReport, GateReport } from "@specgate/gate";
+import { runGateBatch, type BatchGateReport, type BatchSpecInput, type GateReport } from "@specgate/gate";
+import { loadSpecKitFeature } from "@specgate/speckit-adapter";
 import type { Annotation, CheckConclusion, ScmAdapter } from "@specgate/scm-adapter";
+
+export type ActionMode = "files" | "speckit";
 
 export interface RunActionInput {
   specPaths: string[];
   configPath?: string;
   adapter: ScmAdapter;
+  /** "files": gate the given spec files. "speckit": treat paths as Spec Kit specs/<feature>/spec.md. */
+  mode?: ActionMode;
 }
 
 export interface RunActionResult {
@@ -24,8 +30,8 @@ function annotationsFor(report: GateReport): Annotation[] {
   }));
 }
 
-function buildSummary(batch: BatchGateReport): string {
-  const lines = ["## SpecGate gate", ""];
+function buildSummary(batch: BatchGateReport, mode: ActionMode): string {
+  const lines = [`## SpecGate gate${mode === "speckit" ? " (Spec Kit features)" : ""}`, ""];
   lines.push(`- Specs checked: **${batch.reports.length}**`);
   lines.push(`- Blocking findings: **${batch.blockCount}**`);
   lines.push(`- Warnings: **${batch.warnCount}**`);
@@ -49,21 +55,48 @@ function buildSummary(batch: BatchGateReport): string {
   return lines.join("\n");
 }
 
+/**
+ * Build the batch for Spec Kit mode: each path is a `specs/<feature>/spec.md`
+ * (or feature dir). The feature's constitution/plan/tasks/contracts are loaded
+ * as prompt-context so the constitution rules scan them too.
+ */
+function speckitBatch(
+  specPaths: string[],
+  config: Parameters<typeof runGateBatch>[1],
+): { batch: BatchGateReport; missing: string[] } {
+  const featureDirs = [...new Set(specPaths.map((p) => (p.endsWith("spec.md") ? dirname(p) : p)))];
+  const inputs: BatchSpecInput[] = [];
+  const missing: string[] = [];
+  for (const dir of featureDirs) {
+    try {
+      const a = loadSpecKitFeature(dir);
+      inputs.push({ raw: a.specRaw, path: a.specPath, facts: { promptContext: a.promptContext } });
+    } catch {
+      missing.push(dir);
+    }
+  }
+  return { batch: runGateBatch(inputs, config), missing };
+}
+
 /** Core Action logic, decoupled from process/env for testability. */
 export async function runAction(input: RunActionInput): Promise<RunActionResult> {
+  const mode = input.mode ?? "files";
   const config = resolveConfig(input.configPath);
-  const { batch, missing } = runBatchOverFiles(input.specPaths, config);
+  const { batch, missing } =
+    mode === "speckit" ? speckitBatch(input.specPaths, config) : runBatchOverFiles(input.specPaths, config);
 
   for (const m of missing) {
-    await input.adapter.emitAnnotation({ level: "warning", title: "SpecGate", message: `Spec path not found: ${m}` });
+    await input.adapter.emitAnnotation({
+      level: "warning",
+      title: "SpecGate",
+      message: mode === "speckit" ? `No spec.md in Spec Kit feature: ${m}` : `Spec path not found: ${m}`,
+    });
   }
 
   for (const report of batch.reports) {
     for (const a of annotationsFor(report)) await input.adapter.emitAnnotation(a);
   }
 
-  // Post conflicts as inline comments where a file is known (downgraded to
-  // annotations by the GitHub adapter until the REST review path lands).
   await input.adapter.postInlineComments(
     batch.conflicts.flatMap((c) =>
       c.specIds
@@ -74,7 +107,7 @@ export async function runAction(input: RunActionInput): Promise<RunActionResult>
   );
 
   const conclusion: CheckConclusion = batch.blockCount > 0 ? "failure" : "success";
-  await input.adapter.postSummary(buildSummary(batch));
+  await input.adapter.postSummary(buildSummary(batch, mode));
   await input.adapter.setConclusion(
     conclusion,
     `${batch.reports.length} spec(s), ${batch.blockCount} blocking, ${batch.warnCount} warning(s), ${batch.conflicts.length} conflict(s).`,

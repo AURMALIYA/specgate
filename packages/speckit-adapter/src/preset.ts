@@ -1,5 +1,5 @@
 import type { SpecGateConfig } from "@specgate/config";
-import { generateConstitutionTemplate, generateSpecTemplate } from "./template.js";
+import { generateConstitutionTemplate, generateGateCommand, generateSpecTemplate } from "./template.js";
 
 export interface PresetBundle {
   /** Relative path -> file content. Write these under a preset directory. */
@@ -34,6 +34,10 @@ function presetManifest(config: SpecGateConfig): string {
     '      file: "templates/constitution-template.md"',
     '      description: "Constitution seeded from the SpecGate constitution rules."',
     '      replaces: "constitution-template"',
+    '    - type: "command"',
+    '      name: "speckit.gate"',
+    '      file: "commands/speckit.gate.md"',
+    '      description: "Run the SpecGate gate on the current feature before generation."',
     "",
     "tags:",
     '  - "governance"',
@@ -92,6 +96,7 @@ export function buildPreset(config: SpecGateConfig): PresetBundle {
       "LICENSE": MIT_LICENSE,
       "templates/spec-template.md": generateSpecTemplate(config),
       "templates/constitution-template.md": generateConstitutionTemplate(config),
+      "commands/speckit.gate.md": generateGateCommand(config),
     },
   };
 }

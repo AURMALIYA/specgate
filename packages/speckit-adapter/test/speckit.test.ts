@@ -25,6 +25,7 @@ describe("buildPreset", () => {
     expect(Object.keys(files).sort()).toEqual([
       "LICENSE",
       "README.md",
+      "commands/speckit.gate.md",
       "preset.yml",
       "templates/constitution-template.md",
       "templates/spec-template.md",
@@ -32,6 +33,8 @@ describe("buildPreset", () => {
     expect(files["preset.yml"]).toContain('schema_version: "1.0"');
     expect(files["preset.yml"]).toContain('id: "specgate"');
     expect(files["preset.yml"]).toContain('replaces: "spec-template"');
+    expect(files["preset.yml"]).toContain('name: "speckit.gate"');
+    expect(files["commands/speckit.gate.md"]).toContain("/speckit.implement");
     expect(files["templates/constitution-template.md"]).toContain("no-regulated-data-in-context");
   });
 });

@@ -24,6 +24,10 @@ provides:
       file: "templates/constitution-template.md"
       description: "Constitution seeded from the SpecGate constitution rules."
       replaces: "constitution-template"
+    - type: "command"
+      name: "speckit.gate"
+      file: "commands/speckit.gate.md"
+      description: "Run the SpecGate gate on the current feature before generation."
 
 tags:
   - "governance"

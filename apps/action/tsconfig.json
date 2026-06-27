@@ -8,6 +8,7 @@
     { "path": "../../packages/config" },
     { "path": "../../packages/gate" },
     { "path": "../../packages/cli" },
+    { "path": "../../packages/speckit-adapter" },
     { "path": "../../packages/scm-adapter" }
   ],
   "include": ["src/**/*.ts"]

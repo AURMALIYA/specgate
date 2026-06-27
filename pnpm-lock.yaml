@@ -32,6 +32,9 @@ importers:
       '@specgate/scm-adapter':
         specifier: workspace:*
         version: link:../../packages/scm-adapter
+      '@specgate/speckit-adapter':
+        specifier: workspace:*
+        version: link:../../packages/speckit-adapter
 
   apps/api:
     dependencies:

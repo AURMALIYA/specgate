@@ -52,4 +52,19 @@ describe("runAction", () => {
     expect(adapter.annotations.some((a) => a.level === "failure")).toBe(true);
     expect(adapter.conclusion).toBe("failure");
   });
+
+  it("gates a Spec Kit feature in speckit mode (spec.md path → feature dir + context)", async () => {
+    const adapter = new FakeAdapter();
+    const result = await runAction({
+      specPaths: [
+        resolve(ROOT, "config/example-org/speckit-example/specs/001-promo-badge/spec.md"),
+      ],
+      configPath: CONFIG,
+      adapter,
+      mode: "speckit",
+    });
+    expect(result.conclusion).toBe("success");
+    expect(result.batch.reports[0]?.specId).toBe("NW-SK-PROMO-001");
+    expect(adapter.summary).toContain("Spec Kit features");
+  });
 });

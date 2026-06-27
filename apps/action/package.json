@@ -11,6 +11,7 @@
     "@specgate/config": "workspace:*",
     "@specgate/gate": "workspace:*",
     "@specgate/cli": "workspace:*",
+    "@specgate/speckit-adapter": "workspace:*",
     "@specgate/scm-adapter": "workspace:*"
   }
 }

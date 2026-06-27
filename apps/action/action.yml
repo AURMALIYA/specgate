@@ -8,6 +8,10 @@ inputs:
   config:
     description: "Path to the org SpecGate config (YAML)."
     required: true
+  mode:
+    description: "'files' (default) gates the given spec files; 'speckit' treats paths as Spec Kit specs/<feature>/spec.md and pulls constitution/plan/tasks as context."
+    required: false
+    default: "files"
 runs:
   using: "node20"
   main: "dist/main.js"

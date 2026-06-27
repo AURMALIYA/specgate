@@ -42,3 +42,24 @@ jobs:
           else
             echo "Conflict + hidden-RED fixtures correctly blocked."
           fi
+
+      - name: Spec Kit — emit preset and verify the template passes the gate
+        run: |
+          node packages/speckit-adapter/dist/bin.js emit-preset /tmp/specgate-preset --config config/default.config.yaml
+          node packages/cli/dist/bin.js validate /tmp/specgate-preset/templates/spec-template.md --config config/default.config.yaml
+
+      - name: Spec Kit — gate a Spec Kit feature directory
+        run: node packages/speckit-adapter/dist/bin.js gate config/example-org/speckit-example/specs/001-promo-badge --config config/example-org/config.yaml
+
+  # Example of running the Action itself in Spec Kit mode on changed specs.
+  # In a real repo, compute changed `specs/**/spec.md` paths and pass them as `specs`.
+  speckit-gate-action-example:
+    runs-on: ubuntu-latest
+    if: ${{ false }} # illustrative; enable and wire `specs` to your PR's changed spec.md files
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./apps/action
+        with:
+          mode: speckit
+          config: config/example-org/config.yaml
+          specs: config/example-org/speckit-example/specs/001-promo-badge/spec.md

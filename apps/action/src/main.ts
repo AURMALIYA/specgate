@@ -1,5 +1,5 @@
 import { GitHubActionsAdapter } from "@specgate/scm-adapter";
-import { runAction } from "./run.js";
+import { runAction, type ActionMode } from "./run.js";
 
 /**
  * GitHub Action entrypoint. Inputs are read from environment variables set by
@@ -17,9 +17,11 @@ function readSpecPaths(): string[] {
 async function main(): Promise<number> {
   const configPath = process.env["INPUT_CONFIG"] ?? process.env["SPECGATE_CONFIG"] ?? undefined;
   const specPaths = readSpecPaths();
+  const mode: ActionMode =
+    (process.env["INPUT_MODE"] ?? process.env["SPECGATE_MODE"]) === "speckit" ? "speckit" : "files";
   const adapter = new GitHubActionsAdapter();
 
-  const result = await runAction({ specPaths, configPath, adapter });
+  const result = await runAction({ specPaths, configPath, adapter, mode });
   return result.conclusion === "failure" ? 1 : 0;
 }
 
