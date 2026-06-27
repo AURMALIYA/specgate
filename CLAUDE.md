@@ -13,11 +13,22 @@ forbids" lives in `config/`, never in engine code. This is enforced by
 [`scripts/neutrality-denylist.txt`](scripts/neutrality-denylist.txt).
 
 - **Engine packages** (must stay neutral): `config`, `spec-schema`, `policy`, `risk-tier`,
-  `registry`, `conflict-engine`, `workflow`, `verification`, `provenance`, `gate`, `cli`.
+  `registry`, `conflict-engine`, `spec-assistant`, `workflow`, `verification`, `provenance`,
+  `gate`, `cli`.
 - **Exempt by design** (vendor/product-specific adapters): `packages/scm-adapter`,
   `packages/llm-adapter`, `packages/speckit-adapter`, and everything under `apps/`. The semantic
-  *logic* lives neutral in `conflict-engine` behind a `SemanticClient` interface; the Anthropic SDK
-  call lives in `llm-adapter`. All Spec Kit / `.specify` knowledge lives in `speckit-adapter`.
+  *and* co-author *logic* live neutral (`conflict-engine` / `spec-assistant`) behind client
+  interfaces; the Anthropic SDK calls live in `llm-adapter`. All Spec Kit / `.specify` knowledge
+  lives in `speckit-adapter`.
+
+## Note on authoring (deliberate constraint relaxation)
+
+The original brief said the platform "does not author specs." That was relaxed by product decision
+to add an **LLM spec co-author** (`spec-assistant`). The relaxation is scoped to stay safe:
+- The co-author *logic* is engine-neutral; the model call is in `llm-adapter`.
+- **The deterministic gate remains the source of truth** — every co-authored revision is re-gated,
+  and a revision is adopted only if it strictly reduces blocking findings. The assistant cannot
+  make a spec "pass" except by actually satisfying the gate.
 
 If you need platform-specific behavior, add it to a config schema field + the config files, not to
 engine code.
@@ -32,6 +43,7 @@ packages/
   risk-tier/     sensitive-surface scan + tier classifier + hidden-RED escalation
   registry/      ingest specs -> model + graph (access rows, capabilities, deps, contracts)
   conflict-engine/ deterministic cross-spec checks + neutral advisory-semantic layer
+  spec-assistant/ neutral LLM co-author loop (gate findings -> revise -> re-gate); client iface
   workflow/      delivery-loop state machine + tier-based approval + generator!=verifier
   verification/  pluggable harness: EARS->stubs, persona/access, parity, rollback, security
   provenance/    generation provenance store + drift detector
@@ -86,6 +98,9 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
 - [x] Phase 4 — advisory semantic layer (neutral logic in `conflict-engine` + `llm-adapter`
       Anthropic client, always `warn`, fails open), observability metrics in `apps/api`, and the
       static `apps/dashboard` SPA (registry, conflicts, tier distribution, metrics).
+- [x] Spec co-author (authoring vision, phase 1) — `spec-assistant` runs an LLM
+      revise→re-gate loop (gate is source of truth); `llm-adapter` client; `apps/api` `/coauthor`
+      endpoint; dashboard "Co-author a spec" panel. Replit dispatch / git-handoff are the next phase.
 - [x] Spec Kit integration — `speckit-adapter` generates a `specify`-installable preset
       (`integrations/speckit-preset/`, manifest matches Spec Kit's `preset.yml` schema) *from* the
       live schema+config, and ingests a Spec Kit `specs/<feature>/` dir (spec.md + constitution +

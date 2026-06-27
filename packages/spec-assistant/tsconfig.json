@@ -4,6 +4,10 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "references": [{ "path": "../conflict-engine" }, { "path": "../spec-assistant" }],
+  "references": [
+    { "path": "../config" },
+    { "path": "../spec-schema" },
+    { "path": "../gate" }
+  ],
   "include": ["src/**/*.ts"]
 }

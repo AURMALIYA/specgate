@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@specgate/config";
+import type { SpecAssistantClient } from "@specgate/spec-assistant";
 import { describe, expect, it } from "vitest";
 import { SpecGateService } from "../src/service.js";
 
@@ -62,6 +63,20 @@ describe("SpecGateService — full delivery loop", () => {
     expect(clean.filter((f) => f.kind === "modified")).toHaveLength(0);
     const drifted = svc.drift([{ artifactRef: "badge.tsx", hash: hashOf("EDITED BY HAND") }]);
     expect(drifted.some((f) => f.kind === "modified" && f.specId === specId)).toBe(true);
+  });
+
+  it("co-authors a failing draft to a passing spec through an injected assistant", async () => {
+    const good = read("config/example-org/specs/storefront-promotion-badge.md");
+    const broken = good.replace(
+      "- WHEN a product has an active promotion THE SYSTEM SHALL display a promotion badge on the product card.",
+      "- The badge should look nice.",
+    );
+    const assistant: SpecAssistantClient = { async improve() { return { revisedSpec: good }; } };
+    const svc = new SpecGateService(cfg, { now: () => "t", assistantClient: assistant });
+    expect(svc.assistantAvailable).toBe(true);
+    const result = await svc.coAuthor(broken);
+    expect(result.before.ok).toBe(false);
+    expect(result.passed).toBe(true);
   });
 
   it("a RED spec cannot reach APPROVED without all three RED approvers", () => {

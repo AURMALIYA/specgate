@@ -146,6 +146,24 @@ Chronological log of non-obvious choices. Reversible unless noted.
   intro) because that section is parsed line-by-line as criteria — an intro sentence would be
   flagged non-testable.
 
+## Spec co-author (authoring vision — phase 1)
+
+- **Deliberate relaxation of "does not author specs."** Product decision to add an LLM co-author.
+  Scoped to stay safe: the co-author *logic* (`spec-assistant`) is engine-neutral behind a
+  `SpecAssistantClient` interface; the Anthropic call is in `llm-adapter`. The **deterministic gate
+  stays the source of truth** — `coAuthorSpec` gates the draft, asks the assistant to fix the
+  blocking findings, **re-gates**, and adopts a revision only if it *strictly* reduces the blocking
+  count (prevents oscillation / accepting an equal-but-regressed draft). Loop stops on pass, no
+  progress, maxRounds, or a client error (fails safe with the best spec so far).
+- **Model is config-pinned** (`config.semantic.model`); the engine never hard-codes one. The
+  co-author runs only when a client is wired (`apps/api` injects `AnthropicSpecAssistantClient`
+  when `ANTHROPIC_API_KEY` is set); otherwise `/coauthor` returns a graceful 501 and the dashboard
+  panel shows "not configured."
+- **Vision roadmap (not yet built):** dispatch spine (`GenerationTarget` interface on the
+  `APPROVED → GENERATING` transition) → git-handoff target (seed a branch/PR with spec + brief +
+  provenance via `scm-adapter`) → Replit kicker (`replit-adapter`, API + dry-run fallback). Git
+  plays three roles: PR-as-gate, handoff transport, and provenance/drift anchor.
+
 ## Open questions (non-blocking)
 
 - Version derivation: currently `declared || sha256:<first12>`. May switch to full content-hash

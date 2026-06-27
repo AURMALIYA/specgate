@@ -59,6 +59,9 @@ importers:
       '@specgate/risk-tier':
         specifier: workspace:*
         version: link:../../packages/risk-tier
+      '@specgate/spec-assistant':
+        specifier: workspace:*
+        version: link:../../packages/spec-assistant
       '@specgate/spec-schema':
         specifier: workspace:*
         version: link:../../packages/spec-schema
@@ -145,6 +148,9 @@ importers:
       '@specgate/conflict-engine':
         specifier: workspace:*
         version: link:../conflict-engine
+      '@specgate/spec-assistant':
+        specifier: workspace:*
+        version: link:../spec-assistant
 
   packages/policy:
     dependencies:
@@ -173,6 +179,18 @@ importers:
         version: link:../spec-schema
 
   packages/scm-adapter: {}
+
+  packages/spec-assistant:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
+      '@specgate/gate':
+        specifier: workspace:*
+        version: link:../gate
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
 
   packages/spec-schema:
     dependencies:

@@ -1,5 +1,5 @@
 {
-  "name": "@specgate/llm-adapter",
+  "name": "@specgate/spec-assistant",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "build": "tsc --build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.106.0",
-    "@specgate/conflict-engine": "workspace:*",
-    "@specgate/spec-assistant": "workspace:*"
+    "@specgate/config": "workspace:*",
+    "@specgate/spec-schema": "workspace:*",
+    "@specgate/gate": "workspace:*"
   }
 }

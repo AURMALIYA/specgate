@@ -72,3 +72,29 @@ tr:last-child td { border-bottom: 0; }
 .conflict .type { font-weight: 600; }
 .conflict .ids { color: var(--muted); font-size: 12px; }
 .empty { color: var(--muted); font-style: italic; }
+.hint, .muted { color: var(--muted); }
+.row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+textarea {
+  width: 100%;
+  min-height: 160px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+}
+.output {
+  margin-top: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  white-space: pre-wrap;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  max-height: 380px;
+  overflow: auto;
+}
+.output .pass { color: var(--green); }
+.output .fail { color: var(--red); }

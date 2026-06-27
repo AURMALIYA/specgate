@@ -12,6 +12,7 @@ import {
   type WorkflowState,
 } from "@specgate/workflow";
 import { runHarness, type HarnessResult } from "@specgate/verification";
+import { coAuthorSpec, type CoAuthorResult, type SpecAssistantClient } from "@specgate/spec-assistant";
 import {
   runDeterministicConflicts,
   runSemanticConflicts,
@@ -93,14 +94,36 @@ export class SpecGateService {
   readonly provenance = new InMemoryProvenanceStore();
   private readonly now: () => string;
   private readonly semanticClient?: SemanticClient;
+  private readonly assistantClient?: SpecAssistantClient;
 
   constructor(
     private readonly config: SpecGateConfig,
-    opts: { now?: () => string; store?: InMemoryStore; semanticClient?: SemanticClient } = {},
+    opts: {
+      now?: () => string;
+      store?: InMemoryStore;
+      semanticClient?: SemanticClient;
+      assistantClient?: SpecAssistantClient;
+    } = {},
   ) {
     this.registry = new Registry(opts.store ?? new InMemoryStore());
     this.now = opts.now ?? (() => new Date().toISOString());
     this.semanticClient = opts.semanticClient;
+    this.assistantClient = opts.assistantClient;
+  }
+
+  /** Whether an LLM spec co-author is wired in. */
+  get assistantAvailable(): boolean {
+    return !!this.assistantClient;
+  }
+
+  /**
+   * Co-author loop: iteratively ask the assistant to revise a draft until it
+   * passes the gate (or no longer improves). The gate remains the source of
+   * truth — the assistant's output is always re-gated, never trusted.
+   */
+  async coAuthor(raw: string, maxRounds?: number): Promise<CoAuthorResult> {
+    if (!this.assistantClient) throw new Error("Spec assistant is not configured.");
+    return coAuthorSpec({ raw, config: this.config, client: this.assistantClient, maxRounds });
   }
 
   /** Ingest a spec, run the gate + tier engine, and create a DRAFT instance. */

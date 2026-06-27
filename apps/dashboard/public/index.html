@@ -14,6 +14,17 @@
     </header>
 
     <main>
+      <section id="coauthor">
+        <h2>Co-author a spec</h2>
+        <p class="hint">Paste a rough spec. The assistant revises it until it passes the gate — every revision is re-gated, so the gate stays the source of truth.</p>
+        <textarea id="coauthor-input" placeholder="--- &#10;id: SPEC-0001&#10;title: ...&#10;---&#10;&#10;# 1. Linkage&#10;..."></textarea>
+        <div class="row">
+          <button id="coauthor-run">Improve until it passes</button>
+          <span id="coauthor-status" class="muted"></span>
+        </div>
+        <pre id="coauthor-output" class="output" hidden></pre>
+      </section>
+
       <section id="metrics">
         <h2>Observability</h2>
         <div class="cards" id="metric-cards"></div>

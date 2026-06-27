@@ -55,6 +55,13 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         const body = (await readBody(req)) as { raw: string; path?: string };
         return send(res, 201, service.ingest(body.raw, body.path));
       }
+      if (method === "POST" && url.pathname === "/coauthor") {
+        if (!service.assistantAvailable) {
+          return send(res, 501, { error: "Spec assistant not configured. Set ANTHROPIC_API_KEY and enable config.semantic." });
+        }
+        const body = (await readBody(req)) as { raw: string; maxRounds?: number };
+        return send(res, 200, await service.coAuthor(body.raw, body.maxRounds));
+      }
       if (method === "POST" && url.pathname === "/defects") {
         service.recordDefect((await readBody(req)) as DefectInput);
         return send(res, 201, { ok: true });

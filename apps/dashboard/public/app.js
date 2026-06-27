@@ -108,5 +108,37 @@ async function refresh() {
   }
 }
 
+async function coauthor() {
+  const input = document.getElementById("coauthor-input").value;
+  const status = document.getElementById("coauthor-status");
+  const out = document.getElementById("coauthor-output");
+  if (!input.trim()) { status.textContent = "Paste a spec first."; return; }
+  status.textContent = "Working…";
+  out.hidden = true;
+  try {
+    const res = await fetch("/coauthor", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ raw: input }),
+    });
+    const body = await res.json();
+    if (!res.ok) {
+      status.textContent = body.error || `Error ${res.status}`;
+      return;
+    }
+    const before = body.before.ok ? "PASS" : `FAIL (${body.before.blockCount} blocking)`;
+    const after = body.passed ? "PASS" : `FAIL (${body.after.blockCount} blocking)`;
+    status.innerHTML = `before: <b>${before}</b> → after: <b>${body.passed ? "PASS" : "FAIL"}</b> in ${body.rounds} round(s)`;
+    out.hidden = false;
+    out.textContent = body.passed
+      ? body.finalSpec
+      : `Could not reach a passing spec in ${body.rounds} round(s). Best draft:\n\n${body.finalSpec}`;
+    if (body.passed) document.getElementById("coauthor-input").value = body.finalSpec;
+  } catch (err) {
+    status.textContent = `Request failed: ${err.message}`;
+  }
+}
+
 document.getElementById("refresh").addEventListener("click", refresh);
+document.getElementById("coauthor-run").addEventListener("click", coauthor);
 refresh();
