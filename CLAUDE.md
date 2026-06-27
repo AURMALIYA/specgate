@@ -14,9 +14,10 @@ forbids" lives in `config/`, never in engine code. This is enforced by
 
 - **Engine packages** (must stay neutral): `config`, `spec-schema`, `policy`, `risk-tier`,
   `registry`, `conflict-engine`, `workflow`, `verification`, `provenance`, `gate`, `cli`.
-- **Exempt by design** (vendor-specific): `packages/scm-adapter`, `packages/llm-adapter`, and
-  everything under `apps/`. The semantic *logic* lives neutral in `conflict-engine` behind a
-  `SemanticClient` interface; the Anthropic SDK call lives in `llm-adapter`.
+- **Exempt by design** (vendor/product-specific adapters): `packages/scm-adapter`,
+  `packages/llm-adapter`, `packages/speckit-adapter`, and everything under `apps/`. The semantic
+  *logic* lives neutral in `conflict-engine` behind a `SemanticClient` interface; the Anthropic SDK
+  call lives in `llm-adapter`. All Spec Kit / `.specify` knowledge lives in `speckit-adapter`.
 
 If you need platform-specific behavior, add it to a config schema field + the config files, not to
 engine code.
@@ -35,6 +36,7 @@ packages/
   verification/  pluggable harness: EARS->stubs, persona/access, parity, rollback, security
   provenance/    generation provenance store + drift detector
   llm-adapter/   ADAPTER (vendor-specific, exempt): Anthropic-backed SemanticClient
+  speckit-adapter/ ADAPTER (exempt): generate Spec Kit preset from schema; ingest specs/<feature>/
   gate/          orchestrates schema -> policy -> tier -> conflicts; runGate + runGateBatch
   cli/           `specgate validate | tier | conflicts | gate`
   scm-adapter/   neutral interface + GitHub implementation
@@ -84,5 +86,9 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
 - [x] Phase 4 — advisory semantic layer (neutral logic in `conflict-engine` + `llm-adapter`
       Anthropic client, always `warn`, fails open), observability metrics in `apps/api`, and the
       static `apps/dashboard` SPA (registry, conflicts, tier distribution, metrics).
+- [x] Spec Kit integration — `speckit-adapter` generates a `specify`-installable preset
+      (`integrations/speckit-preset/`, manifest matches Spec Kit's `preset.yml` schema) *from* the
+      live schema+config, and ingests a Spec Kit `specs/<feature>/` dir (spec.md + constitution +
+      plan + tasks + contracts) into the gate. `specgate-speckit emit-preset | gate`.
 
 See [DECISIONS.md](DECISIONS.md) for recorded assumptions.

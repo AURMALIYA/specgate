@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    { "path": "../config" },
+    { "path": "../spec-schema" },
+    { "path": "../policy" },
+    { "path": "../gate" }
+  ],
+  "include": ["src/**/*.ts"]
+}

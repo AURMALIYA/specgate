@@ -1,0 +1,31 @@
+schema_version: "1.0"
+
+preset:
+  id: "specgate"
+  name: "SpecGate governance template"
+  version: "0.1.0"
+  description: "SpecGate gate sections, EARS criteria, and access-matrix template (org: default)."
+  author: "SpecGate"
+  repository: "https://github.com/your-org/spec-kit-preset-specgate"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.1.0"
+
+provides:
+  templates:
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "SpecGate-conformant feature spec (gate sections + EARS + access matrix)."
+      replaces: "spec-template"
+    - type: "template"
+      name: "constitution-template"
+      file: "templates/constitution-template.md"
+      description: "Constitution seeded from the SpecGate constitution rules."
+      replaces: "constitution-template"
+
+tags:
+  - "governance"
+  - "ears"
+  - "specgate"

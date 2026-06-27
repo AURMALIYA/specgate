@@ -123,6 +123,29 @@ Chronological log of non-obvious choices. Reversible unless noted.
   = specs tripping the standard-first rule over total; conflict counts by type from the deterministic
   engine over the registry; cost per generation = mean of caller-supplied generation costs.
 
+## Spec Kit integration
+
+- **All Spec Kit knowledge lives in `speckit-adapter`** (exempt from the neutrality denylist, like
+  `scm-adapter`/`llm-adapter`). The engine never references `.specify`, `spec-kit`, or `speckit`.
+- **The preset is generated from the live schema + config, not hand-written.** `buildPreset(config)`
+  emits the gate sections (from `SECTION_DEFS`), the access-matrix columns + config enums, and EARS
+  examples. A test asserts the generated `spec-template.md` itself **passes `runGate`** under both
+  the default and example configs — so the locally-authored template can never drift from the
+  server-enforced gate. Regenerate with `specgate-speckit emit-preset` when the org config changes.
+- **Manifest matches Spec Kit's real format.** Confirmed against `github/spec-kit`'s
+  `presets/scaffold/preset.yml`: `schema_version: "1.0"`, `preset{id,name,version,description,
+  author,repository,license}`, `requires.speckit_version`, `provides.templates[]` with
+  `type/name/file/description/replaces`, and `tags`. Bundle layout is `preset.yml` + `README.md` +
+  `LICENSE` + `templates/`. Install path: `specify preset add --dev ./specgate-preset`. The
+  published artifact is committed at `integrations/speckit-preset/` (generated from default config).
+- **Ingestion treats the Spec Kit spec.md as the spec under test** and feeds the constitution,
+  plan, tasks, and contracts as **prompt-context** — so the `no-regulated-data` constitution rule
+  scans all of them, not just the spec body. The constitution path defaults to
+  `<feature>/../../.specify/memory/constitution.md` (Spec Kit's location), overridable.
+- **The acceptance-criteria section in the generated template contains ONLY EARS lines** (no prose
+  intro) because that section is parsed line-by-line as criteria — an intro sentence would be
+  flagged non-testable.
+
 ## Open questions (non-blocking)
 
 - Version derivation: currently `declared || sha256:<first12>`. May switch to full content-hash

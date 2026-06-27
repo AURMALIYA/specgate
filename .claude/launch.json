@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "specgate",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["apps/api/dist/main.js"],
+      "port": 8787,
+      "env": {
+        "SPECGATE_CONFIG": "config/example-org/config.yaml",
+        "PORT": "8787",
+        "DASHBOARD_DIR": "apps/dashboard/public"
+      }
+    }
+  ]
+}

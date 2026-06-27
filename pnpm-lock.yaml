@@ -183,6 +183,21 @@ importers:
         specifier: ^3.23.8
         version: 3.25.76
 
+  packages/speckit-adapter:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
+      '@specgate/gate':
+        specifier: workspace:*
+        version: link:../gate
+      '@specgate/policy':
+        specifier: workspace:*
+        version: link:../policy
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
+
   packages/verification:
     dependencies:
       '@specgate/config':
