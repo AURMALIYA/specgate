@@ -8,8 +8,12 @@
     { "path": "packages/risk-tier" },
     { "path": "packages/registry" },
     { "path": "packages/conflict-engine" },
+    { "path": "packages/workflow" },
+    { "path": "packages/verification" },
+    { "path": "packages/provenance" },
     { "path": "packages/gate" },
     { "path": "packages/cli" },
-    { "path": "apps/action" }
+    { "path": "apps/action" },
+    { "path": "apps/api" }
   ]
 }

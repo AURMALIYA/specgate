@@ -18,6 +18,9 @@ const ENGINE_PACKAGES = [
   "risk-tier",
   "registry",
   "conflict-engine",
+  "workflow",
+  "verification",
+  "provenance",
   "gate",
   "cli",
 ];

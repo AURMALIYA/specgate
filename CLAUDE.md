@@ -29,12 +29,15 @@ packages/
   risk-tier/     sensitive-surface scan + tier classifier + hidden-RED escalation
   registry/      ingest specs -> model + graph (access rows, capabilities, deps, contracts)
   conflict-engine/ deterministic cross-spec checks + (Phase 4) semantic advisory
+  workflow/      delivery-loop state machine + tier-based approval + generator!=verifier
+  verification/  pluggable harness: EARS->stubs, persona/access, parity, rollback, security
+  provenance/    generation provenance store + drift detector
   gate/          orchestrates schema -> policy -> tier -> conflicts; runGate + runGateBatch
   cli/           `specgate validate | tier | conflicts | gate`
   scm-adapter/   neutral interface + GitHub implementation
 apps/
   action/        GitHub Action entrypoint that runs the gate on changed specs
-  api/           (Phase 3/4) registry, approvals state machine, provenance, metrics
+  api/           backend Service: ingest, state machine, verify, provenance, drift, metrics + HTTP
   dashboard/     (Phase 4) Next.js dashboard
 config/
   default.config.yaml      documented neutral baseline
@@ -71,7 +74,10 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
 - [x] Phase 2 — `registry` + `risk-tier` (sensitive-surface scan → hidden-RED escalation) +
       deterministic `conflict-engine`; CLI `tier`/`conflicts`; batch `gate` with cross-spec
       conflicts; Action annotates conflicts and blocks on `block` severity.
-- [ ] Phase 3 — approval state machine + verification harness + provenance + drift.
+- [x] Phase 3 — `workflow` delivery-loop state machine (tier-based approval gates;
+      generator≠verifier enforced structurally at VERIFYING→READY_FOR_UAT), `verification`
+      harness (EARS→stubs, persona/access, parity, rollback, security), `provenance` store +
+      drift detector, all composed in `apps/api` (Service + minimal HTTP server).
 - [ ] Phase 4 — semantic advisory layer + dashboard + metrics.
 
 See [DECISIONS.md](DECISIONS.md) for recorded assumptions.

@@ -33,6 +33,33 @@ importers:
         specifier: workspace:*
         version: link:../../packages/scm-adapter
 
+  apps/api:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@specgate/gate':
+        specifier: workspace:*
+        version: link:../../packages/gate
+      '@specgate/provenance':
+        specifier: workspace:*
+        version: link:../../packages/provenance
+      '@specgate/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
+      '@specgate/risk-tier':
+        specifier: workspace:*
+        version: link:../../packages/risk-tier
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../../packages/spec-schema
+      '@specgate/verification':
+        specifier: workspace:*
+        version: link:../../packages/verification
+      '@specgate/workflow':
+        specifier: workspace:*
+        version: link:../../packages/workflow
+
   packages/cli:
     dependencies:
       '@specgate/config':
@@ -108,6 +135,8 @@ importers:
         specifier: workspace:*
         version: link:../spec-schema
 
+  packages/provenance: {}
+
   packages/registry:
     dependencies:
       '@specgate/spec-schema':
@@ -136,6 +165,21 @@ importers:
       zod:
         specifier: ^3.23.8
         version: 3.25.76
+
+  packages/verification:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
+      '@specgate/spec-schema':
+        specifier: workspace:*
+        version: link:../spec-schema
+
+  packages/workflow:
+    dependencies:
+      '@specgate/config':
+        specifier: workspace:*
+        version: link:../config
 
 packages:
 

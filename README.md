@@ -37,9 +37,20 @@ node packages/cli/dist/bin.js gate specs --config config/default.config.yaml
 
 ## Status
 
-Phases 0–2 are complete: scaffold, the standardization gate, and the registry + risk-tier engine
-(with hidden-RED escalation) + deterministic conflict engine. See [CLAUDE.md](CLAUDE.md) for the
-layout and phase roadmap, and [DECISIONS.md](DECISIONS.md) for recorded assumptions.
+Phases 0–3 are complete: scaffold, the standardization gate, the registry + risk-tier engine
+(with hidden-RED escalation) + deterministic conflict engine, and the delivery-loop state machine +
+verification harness + provenance/drift composed in a backend API. See [CLAUDE.md](CLAUDE.md) for
+the layout and phase roadmap, and [DECISIONS.md](DECISIONS.md) for recorded assumptions.
+
+The delivery loop (`DRAFT → IN_REVIEW → APPROVED → GENERATING → VERIFYING → READY_FOR_UAT → DONE`,
+plus `BLOCKED`) maps onto Spec Kit's specify → clarify → plan/tasks → generate → verify, with the
+spec-review and tier-routing gates inserted before generate and the independent-verify stage after.
+Approval gates use the per-tier reviewer matrix, and the generator can never be the verifier.
+
+```bash
+# Run the backend API (in-memory)
+SPECGATE_CONFIG=config/example-org/config.yaml node apps/api/dist/main.js
+```
 
 ```bash
 # Re-derive tiers and surface hidden-RED escalation

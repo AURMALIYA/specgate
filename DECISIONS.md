@@ -70,6 +70,33 @@ Chronological log of non-obvious choices. Reversible unless noted.
   files) and also returned at the batch level. The GitHub adapter still downgrades inline review
   comments to file-level annotations until the REST review path lands.
 
+## Phase 3
+
+- **State machine is a pure reducer.** `applyEvent(instance, event)` returns a new instance or a
+  rejection; the engine never mutates in place and never calls `Date.now()` — every event carries an
+  ISO `at` timestamp from the caller, keeping transitions deterministic and replayable.
+- **Approval auto-advances to APPROVED only when the tier-required set is satisfied** — every
+  required role covered by an approval AND distinct-approver count ≥ `minApprovals` (both from the
+  reviewer matrix). This is how "cannot reach APPROVED without tier-required approvers" is enforced.
+- **generator≠verifier is structural, not advisory.** The `VERIFYING→READY_FOR_UAT` transition is
+  rejected outright when `verifierId === generatorId`, independent of the constitution rule (which
+  is a second line of defense at gate time). Sign-off also requires `passed === true`.
+- **Verification harness runs as a separate stage** and never mutates the spec. Runners are
+  pluggable via the `Runner` interface; `applies()` keeps them config/tier-driven (parity-oracle
+  fires on `high`-sensitivity categories, rollback on non-GREEN, security gate on RED). EARS stubs
+  and persona/access assertions are *generated* (there is no app code at the governance layer), so
+  they are `todo`/`pass`; the harness only fails on real contradictions (e.g. editable-without-
+  visible) or a missing rollback reference on a promotable change.
+- **Provenance is caller-supplied + hash-derived.** The store records
+  `{specId, specContentHash, pinnedModel, promptContextRef, timestamp, generatedArtifactRefs}`;
+  artifact snapshots hash the generated content so the drift detector can later flag out-of-band
+  edits (`modified`), plus `untracked` and `missing` artifacts.
+- **`apps/api` is a composition layer.** A `SpecGateService` holds in-memory state (pluggable) and
+  is the unit-tested surface; the `node:http` server is a thin JSON wrapper with no framework
+  dependency. Metrics are basic counts here and expand into the observability API in Phase 4.
+- **Removed `oracle` from the neutrality denylist.** "Parity oracle" is core domain vocabulary in
+  the brief; the denylist must only contain unambiguous vendor/product names.
+
 ## Open questions (non-blocking)
 
 - Version derivation: currently `declared || sha256:<first12>`. May switch to full content-hash
