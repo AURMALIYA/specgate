@@ -55,8 +55,8 @@ export interface CoAuthorInput {
  * a client error just ends the loop with the best spec so far.
  */
 export async function coAuthorSpec(input: CoAuthorInput): Promise<CoAuthorResult> {
-  const model = input.model ?? input.config.semantic?.model;
-  if (!model) throw new Error("No model configured for the spec assistant (set config.semantic.model).");
+  // Model is required by model-backed clients; offline/rule-based clients ignore it.
+  const model = input.model ?? input.config.semantic?.model ?? "local";
   const maxRounds = input.maxRounds ?? 3;
 
   const before = runGate({ raw: input.raw, config: input.config });
@@ -69,7 +69,11 @@ export async function coAuthorSpec(input: CoAuthorInput): Promise<CoAuthorResult
     const fixing = blockingOf(report);
     let revisedSpec: string;
     try {
-      ({ revisedSpec } = await input.client.improve({ prompt: buildCoAuthorPrompt(current, fixing), model }));
+      ({ revisedSpec } = await input.client.improve({
+        prompt: buildCoAuthorPrompt(current, fixing),
+        currentSpec: current,
+        model,
+      }));
     } catch {
       break;
     }

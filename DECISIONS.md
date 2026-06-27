@@ -159,6 +159,15 @@ Chronological log of non-obvious choices. Reversible unless noted.
   co-author runs only when a client is wired (`apps/api` injects `AnthropicSpecAssistantClient`
   when `ANTHROPIC_API_KEY` is set); otherwise `/coauthor` returns a graceful 501 and the dashboard
   panel shows "not configured."
+- **Offline co-author (`LocalSpecAssistantClient`):** a rule-based `SpecAssistantClient` that needs
+  no API key — it deterministically repairs the common gate failures (prefix non-EARS criteria with
+  `THE SYSTEM SHALL`, add a rollback reference, append missing gate sections with valid placeholders
+  from config enums). `apps/api` wires it as the fallback when `ANTHROPIC_API_KEY` is unset, so the
+  `/coauthor` endpoint and dashboard panel work fully offline. It is intentionally mechanical (makes
+  specs *conformant*, not necessarily *good*); the re-gate loop still decides pass/fail, so it can
+  only "pass" a spec by genuinely satisfying the gate. To enable the loop to run with no model, the
+  co-author defaults the model id to `"local"` when none is configured (model-backed clients only
+  run when a real key + model are present).
 - **Vision roadmap (not yet built):** dispatch spine (`GenerationTarget` interface on the
   `APPROVED → GENERATING` transition) → git-handoff target (seed a branch/PR with spec + brief +
   provenance via `scm-adapter`) → Replit kicker (`replit-adapter`, API + dry-run fallback). Git

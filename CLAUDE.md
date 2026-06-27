@@ -101,6 +101,9 @@ node packages/cli/dist/bin.js gate config/example-org/specs --config config/exam
 - [x] Spec co-author (authoring vision, phase 1) — `spec-assistant` runs an LLM
       revise→re-gate loop (gate is source of truth); `llm-adapter` client; `apps/api` `/coauthor`
       endpoint; dashboard "Co-author a spec" panel. Replit dispatch / git-handoff are the next phase.
+      - **Offline mode:** `LocalSpecAssistantClient` (rule-based, no API key) repairs common gate
+        failures (non-EARS criteria, missing rollback ref, missing gate sections). `apps/api` uses
+        it automatically when `ANTHROPIC_API_KEY` is unset, so the co-author works fully offline.
 - [x] Spec Kit integration — `speckit-adapter` generates a `specify`-installable preset
       (`integrations/speckit-preset/`, manifest matches Spec Kit's `preset.yml` schema) *from* the
       live schema+config, and ingests a Spec Kit `specs/<feature>/` dir (spec.md + constitution +

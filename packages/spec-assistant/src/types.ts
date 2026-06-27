@@ -6,7 +6,13 @@ import type { GateReport } from "@specgate/gate";
  * in an adapter package. This package names no vendor and pins no model.
  */
 export interface SpecAssistantClient {
-  improve(req: { prompt: string; model: string; maxOutputTokens?: number }): Promise<{ revisedSpec: string }>;
+  improve(req: {
+    prompt: string;
+    /** The raw spec being revised (used by offline/rule-based clients). */
+    currentSpec: string;
+    model: string;
+    maxOutputTokens?: number;
+  }): Promise<{ revisedSpec: string }>;
 }
 
 export interface CoAuthorRound {

@@ -1,5 +1,6 @@
 import { loadConfig } from "@specgate/config";
 import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate/llm-adapter";
+import { LocalSpecAssistantClient } from "@specgate/spec-assistant";
 import { buildServer } from "./server.js";
 import { SpecGateService } from "./service.js";
 
@@ -14,12 +15,19 @@ const config = loadConfig(configPath);
 const hasKey = !!process.env["ANTHROPIC_API_KEY"];
 const semanticClient =
   config.semantic?.enabled && hasKey ? new AnthropicSemanticClient() : undefined;
-// The co-author needs a pinned model (config.semantic.model) and an API key.
-const assistantClient = config.semantic?.model && hasKey ? new AnthropicSpecAssistantClient() : undefined;
+// Co-author: use the model-backed client when an API key is present, otherwise
+// fall back to the offline, rule-based assistant so it works with no key.
+const assistantClient =
+  config.semantic?.model && hasKey
+    ? new AnthropicSpecAssistantClient()
+    : new LocalSpecAssistantClient(config);
+const assistantKind = config.semantic?.model && hasKey ? "model" : "local (offline, rule-based)";
 
 const service = new SpecGateService(config, { semanticClient, assistantClient });
 const server = buildServer(service, { staticDir });
 
 server.listen(port, () => {
-  process.stdout.write(`SpecGate API + dashboard on :${port} (config: ${configPath})\n`);
+  process.stdout.write(
+    `SpecGate API + dashboard on :${port} (config: ${configPath}; co-author: ${assistantKind})\n`,
+  );
 });
