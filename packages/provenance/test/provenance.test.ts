@@ -42,3 +42,14 @@ describe("drift detection", () => {
     expect(findings).toHaveLength(0);
   });
 });
+
+describe("override audit log", () => {
+  it("appends immutable override events, queryable per spec", () => {
+    const store = new InMemoryProvenanceStore();
+    store.recordOverride({ specId: "S1", actor: "alice", at: "t", justification: "hotfix", coveredCodes: ["ears.non_testable"], safetyInvariant: false });
+    store.recordOverride({ specId: "S2", actor: "bob", at: "t", justification: "exec call", coveredCodes: ["tier.hidden-red"], safetyInvariant: true });
+    expect(store.overrides()).toHaveLength(2);
+    expect(store.overridesForSpec("S1")).toHaveLength(1);
+    expect(store.overrides().filter((o) => o.safetyInvariant)).toHaveLength(1);
+  });
+});

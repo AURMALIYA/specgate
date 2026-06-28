@@ -131,8 +131,19 @@ target). **Needs setup:** Replit token + target repo for live dispatch.
 **Done when:** an admin can dispatch an eligible spec from the UX; non-eligible/non-admin can't;
 provenance records the dispatch.
 
-## Phase 11 — Admin actions: merge + override-with-audit
+## Phase 11 — Admin actions: merge + override-with-audit — ✅ SHIPPED
 **Goal:** admin can merge PRs and override any finding, with a strong audit trail.
+
+**Shipped:** immutable `OverrideEvent` audit log in `provenance`; `scm-adapter` `PullRequestMerger`
+interface + `DryRunMerger` + `GitHubMerger`; `apps/api` `Service.override` (full override, mandatory
+justification, blanket-or-by-code), `canMerge` (gate clean OR every blocker overridden), `merge`;
+`safety.ts` flags safety-invariant overrides (hidden-RED, access conflict, generator≠verifier);
+endpoints `POST …/override|merge`, `GET …/can-merge|overrides`, gated on the `override`/`merge`
+capabilities; metrics gain `overrides` + `safetyInvariantOverrides`; dashboard Run/Merge/Override
+buttons + override metric cards. Verified live: hidden-RED blocks merge → audited override
+(safety-invariant flagged) → merge allowed; metrics reflect it.
+**Needs setup:** `GITHUB_TOKEN` for live PR merge (dry-run otherwise).
+
 
 - **Override (full, audited):** `POST …/override` requires a typed **justification**; writes an
   **immutable provenance audit event** (who/when/finding/why); posts it on the PR; surfaces it on

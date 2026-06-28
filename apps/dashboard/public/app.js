@@ -31,6 +31,8 @@ function renderMetrics(m) {
     ["Defect-escape rate", pct(m.defectEscapeRate)],
     ["Custom vs standard", pct(m.customVsStandardRatio)],
     ["Cost / generation", m.costPerGeneration.toFixed(2)],
+    ["Overrides", m.overrides],
+    ["Safety overrides", m.safetyInvariantOverrides],
   ];
   for (const [label, value] of items) {
     cards.append(el("div", { class: "card" }, el("div", { class: "value" }, String(value)), el("div", { class: "label" }, label)));
@@ -80,8 +82,13 @@ function renderRegistry(specs) {
   }
   for (const s of specs) {
     const tier = s.frontmatter.risk_tier;
-    const runBtn = el("button", { class: "run-btn", "data-spec": s.id }, "Run");
     const status = el("span", { class: "muted", id: `run-${s.id}` });
+    const actions = el("td", {},
+      el("button", { class: "run-btn", "data-spec": s.id }, "Run"),
+      el("button", { class: "merge-btn", "data-spec": s.id }, "Merge"),
+      el("button", { class: "override-btn", "data-spec": s.id }, "Override"),
+      status,
+    );
     tbody.append(
       el("tr", {},
         el("td", {}, s.id),
@@ -89,10 +96,39 @@ function renderRegistry(specs) {
         el("td", {}, el("span", { class: `pill ${tier}` }, tier)),
         el("td", {}, (s.provides || []).join(", ") || "—"),
         el("td", {}, (s.frontmatter.change_categories || []).join(", ")),
-        el("td", {}, runBtn, status),
+        actions,
       ),
     );
   }
+}
+
+async function mergeSpec(specId) {
+  const status = document.getElementById(`run-${specId}`);
+  status.textContent = " checking…";
+  try {
+    const can = await getJSON(`/instances/${encodeURIComponent(specId)}/can-merge`);
+    if (!can.allowed) { status.textContent = ` cannot merge: ${can.reasons.join("; ")}`; return; }
+    const res = await fetch(`/instances/${encodeURIComponent(specId)}/merge`, { method: "POST" });
+    const body = await res.json();
+    status.textContent = res.ok && body.merged ? ` ✓ merged${body.result?.dryRun ? " (dry-run)" : ""}` : ` ${body.error || body.reasons?.join("; ") || "merge failed"}`;
+  } catch (err) { status.textContent = ` ${err.message}`; }
+}
+
+async function overrideSpec(specId) {
+  const justification = window.prompt(`Override the gate for ${specId}? This is audited. Enter a justification:`);
+  if (!justification) return;
+  const status = document.getElementById(`run-${specId}`);
+  try {
+    const res = await fetch(`/instances/${encodeURIComponent(specId)}/override`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ justification }),
+    });
+    const body = await res.json();
+    if (!res.ok) { status.textContent = ` ${body.error || res.status}`; return; }
+    status.innerHTML = ` ⚑ override recorded (${body.coveredCodes.length} finding(s))${body.safetyInvariant ? ' <b style="color:var(--red)">safety-invariant!</b>' : ""}`;
+    refresh();
+  } catch (err) { status.textContent = ` ${err.message}`; }
 }
 
 async function runSpec(specId) {
@@ -164,7 +200,11 @@ async function coauthor() {
 document.getElementById("refresh").addEventListener("click", refresh);
 document.getElementById("coauthor-run").addEventListener("click", coauthor);
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest?.(".run-btn");
-  if (btn) runSpec(btn.getAttribute("data-spec"));
+  const run = e.target.closest?.(".run-btn");
+  if (run) return runSpec(run.getAttribute("data-spec"));
+  const merge = e.target.closest?.(".merge-btn");
+  if (merge) return mergeSpec(merge.getAttribute("data-spec"));
+  const ov = e.target.closest?.(".override-btn");
+  if (ov) return overrideSpec(ov.getAttribute("data-spec"));
 });
 refresh();

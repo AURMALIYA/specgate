@@ -126,18 +126,33 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         if (method === "GET" && parts[2] === "run-eligibility") {
           return send(res, 200, service.runEligibility(specId));
         }
+        // Admin-only capability gate (when RBAC is enabled). Returns the actor id.
+        const gateCapability = async (cap: Capability): Promise<{ allowed: boolean; actor: string; reason?: string }> => {
+          const cred = credentialOf(req);
+          if (!access?.enabled) return { allowed: true, actor: "local" };
+          const projectId = req.headers["x-specgate-project"];
+          const decision = await access.check(cred, typeof projectId === "string" ? projectId : "", cap);
+          return { allowed: decision.allowed, actor: decision.principal?.id ?? "unknown", reason: decision.reason };
+        };
+
         if (method === "POST" && parts[2] === "run") {
-          // Admin-only: gate on the "run" capability when RBAC is enabled.
-          if (access?.enabled) {
-            const projectId = req.headers["x-specgate-project"];
-            const decision = await access.check(
-              credentialOf(req),
-              typeof projectId === "string" ? projectId : "",
-              "run",
-            );
-            if (!decision.allowed) return send(res, 403, { error: `run denied: ${decision.reason}` });
-          }
+          const g = await gateCapability("run");
+          if (!g.allowed) return send(res, 403, { error: `run denied: ${g.reason}` });
           return send(res, 200, await service.run(specId));
+        }
+        if (method === "GET" && parts[2] === "can-merge") return send(res, 200, service.canMerge(specId));
+        if (method === "GET" && parts[2] === "overrides") return send(res, 200, service.overridesForSpec(specId));
+        if (method === "POST" && parts[2] === "override") {
+          const g = await gateCapability("override");
+          if (!g.allowed) return send(res, 403, { error: `override denied: ${g.reason}` });
+          const body = (await readBody(req)) as { justification: string; findingCode?: string };
+          return send(res, 200, service.override({ specId, actor: g.actor, justification: body.justification, findingCode: body.findingCode }));
+        }
+        if (method === "POST" && parts[2] === "merge") {
+          const g = await gateCapability("merge");
+          if (!g.allowed) return send(res, 403, { error: `merge denied: ${g.reason}` });
+          const body = (await readBody(req)) as { prNumber?: number; method?: "merge" | "squash" | "rebase" };
+          return send(res, 200, await service.merge({ specId, prNumber: body.prNumber, method: body.method }));
         }
       }
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ArtifactSnapshot, ProvenanceRecord, ProvenanceStore } from "./types.js";
+import type { ArtifactSnapshot, OverrideEvent, ProvenanceRecord, ProvenanceStore } from "./types.js";
 
 /** Stable content hash helper used for snapshots and drift comparison. */
 export function hashContent(content: string): string {
@@ -10,6 +10,7 @@ export function hashContent(content: string): string {
 export class InMemoryProvenanceStore implements ProvenanceStore {
   private readonly records: ProvenanceRecord[] = [];
   private readonly snapshots: ArtifactSnapshot[] = [];
+  private readonly overrideEvents: OverrideEvent[] = [];
 
   record(rec: ProvenanceRecord): void {
     this.records.push(rec);
@@ -32,5 +33,14 @@ export class InMemoryProvenanceStore implements ProvenanceStore {
   }
   allSnapshots(): ArtifactSnapshot[] {
     return [...this.snapshots];
+  }
+  recordOverride(event: OverrideEvent): void {
+    this.overrideEvents.push(event);
+  }
+  overrides(): OverrideEvent[] {
+    return [...this.overrideEvents];
+  }
+  overridesForSpec(specId: string): OverrideEvent[] {
+    return this.overrideEvents.filter((e) => e.specId === specId);
   }
 }

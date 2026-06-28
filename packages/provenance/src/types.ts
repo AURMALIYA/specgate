@@ -40,6 +40,24 @@ export interface DriftFinding {
   detail: string;
 }
 
+/**
+ * An immutable audit event recording that an admin overrode the gate. Overrides
+ * are append-only — the audit trail is what keeps "spec is a contract"
+ * meaningful even when any finding can be bypassed.
+ */
+export interface OverrideEvent {
+  specId: string;
+  /** Who performed the override. */
+  actor: string;
+  at: string;
+  /** Required written justification. */
+  justification: string;
+  /** Finding codes this override covers (a blanket override lists all current blockers). */
+  coveredCodes: string[];
+  /** True when any covered finding is a safety invariant (hidden-RED, access conflict, generator≠verifier). */
+  safetyInvariant: boolean;
+}
+
 export interface ProvenanceStore {
   record(rec: ProvenanceRecord): void;
   bySpec(specId: string): ProvenanceRecord[];
@@ -48,4 +66,7 @@ export interface ProvenanceStore {
   putSnapshot(snapshot: ArtifactSnapshot): void;
   snapshotsForSpec(specId: string): ArtifactSnapshot[];
   allSnapshots(): ArtifactSnapshot[];
+  recordOverride(event: OverrideEvent): void;
+  overrides(): OverrideEvent[];
+  overridesForSpec(specId: string): OverrideEvent[];
 }

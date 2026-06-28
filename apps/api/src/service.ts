@@ -34,8 +34,11 @@ import {
   InMemoryProvenanceStore,
   type DeployedArtifact,
   type DriftFinding,
+  type OverrideEvent,
   type ProvenanceRecord,
 } from "@specgate/provenance";
+import { DryRunMerger, type MergeResult, type PullRequestMerger } from "@specgate/scm-adapter";
+import { isSafetyInvariant } from "./safety.js";
 
 export interface IngestResult {
   specId: string;
@@ -78,6 +81,10 @@ export interface SpecGateMetrics {
   customVsStandardRatio: number;
   /** Average recorded cost per generation (0 when no costs recorded). */
   costPerGeneration: number;
+  /** Total admin overrides recorded. */
+  overrides: number;
+  /** Overrides that bypassed a safety invariant (flagged loudly). */
+  safetyInvariantOverrides: number;
 }
 
 interface SpecEntry {
@@ -104,6 +111,7 @@ export class SpecGateService {
   private readonly semanticClient?: SemanticClient;
   private readonly assistantClient?: SpecAssistantClient;
   private readonly target: GenerationTarget;
+  private readonly merger: PullRequestMerger;
   /** Default repo ("owner/name") for git-based dispatch, when not per-spec. */
   private readonly defaultRepo?: string;
 
@@ -115,6 +123,7 @@ export class SpecGateService {
       semanticClient?: SemanticClient;
       assistantClient?: SpecAssistantClient;
       generationTarget?: GenerationTarget;
+      merger?: PullRequestMerger;
       defaultRepo?: string;
     } = {},
   ) {
@@ -123,7 +132,74 @@ export class SpecGateService {
     this.semanticClient = opts.semanticClient;
     this.assistantClient = opts.assistantClient;
     this.target = opts.generationTarget ?? new DryRunTarget();
+    this.merger = opts.merger ?? new DryRunMerger();
     this.defaultRepo = opts.defaultRepo;
+  }
+
+  /** Distinct blocking finding codes for a spec (per-spec gate + cross-spec conflicts). */
+  private blockingCodes(specId: string): string[] {
+    const entry = this.specs.get(specId);
+    if (!entry) return [];
+    const gateCodes = runGate({ raw: entry.raw, config: this.config }).findings
+      .filter((f) => f.severity === "block")
+      .map((f) => f.code);
+    const conflictCodes = this.conflicts()
+      .filter((c) => c.severity === "block" && c.specIds.includes(specId))
+      .map((c) => `conflict.${c.type}`);
+    return [...new Set([...gateCodes, ...conflictCodes])];
+  }
+
+  /**
+   * Record an admin override (full override: any finding). Requires a written
+   * justification; writes an immutable audit event. A blanket override (no
+   * findingCode) covers every current blocking finding.
+   */
+  override(input: { specId: string; actor: string; justification: string; findingCode?: string; at?: string }): OverrideEvent {
+    if (!this.specs.has(input.specId)) throw new Error(`unknown spec ${input.specId}`);
+    if (!input.justification?.trim()) {
+      throw Object.assign(new Error("an override requires a written justification"), { status: 400 });
+    }
+    const blocking = this.blockingCodes(input.specId);
+    const coveredCodes = input.findingCode ? [input.findingCode] : blocking;
+    const event: OverrideEvent = {
+      specId: input.specId,
+      actor: input.actor,
+      at: input.at ?? this.now(),
+      justification: input.justification.trim(),
+      coveredCodes,
+      safetyInvariant: coveredCodes.some(isSafetyInvariant),
+    };
+    this.provenance.recordOverride(event);
+    return event;
+  }
+
+  overridesForSpec(specId: string): OverrideEvent[] {
+    return this.provenance.overridesForSpec(specId);
+  }
+
+  /** Can the spec be merged? (Gate clean, or every blocking finding overridden.) */
+  canMerge(specId: string): { allowed: boolean; reasons: string[] } {
+    const entry = this.specs.get(specId);
+    if (!entry) throw new Error(`unknown spec ${specId}`);
+    const blocking = this.blockingCodes(specId);
+    if (blocking.length === 0) return { allowed: true, reasons: [] };
+    const covered = new Set(this.overridesForSpec(specId).flatMap((o) => o.coveredCodes));
+    const uncovered = blocking.filter((c) => !covered.has(c));
+    return uncovered.length === 0
+      ? { allowed: true, reasons: [`${blocking.length} blocking finding(s) overridden`] }
+      : { allowed: false, reasons: [`unresolved & not overridden: ${uncovered.join(", ")}`] };
+  }
+
+  /** Merge the spec's PR — only when the gate is clean or all blocks are overridden. */
+  async merge(input: { specId: string; prNumber?: number; method?: "merge" | "squash" | "rebase" }): Promise<{ merged: boolean; reasons: string[]; result?: MergeResult }> {
+    const verdict = this.canMerge(input.specId);
+    if (!verdict.allowed) return { merged: false, reasons: verdict.reasons };
+    const result = await this.merger.merge({
+      repo: this.defaultRepo ?? "unset",
+      prNumber: input.prNumber ?? 0,
+      method: input.method,
+    });
+    return { merged: result.merged, reasons: verdict.reasons, result };
   }
 
   /** Whether an LLM spec co-author is wired in. */
@@ -358,6 +434,8 @@ export class SpecGateService {
       conflictCountsByType,
       customVsStandardRatio: total ? customCount / total : 0,
       costPerGeneration,
+      overrides: this.provenance.overrides().length,
+      safetyInvariantOverrides: this.provenance.overrides().filter((o) => o.safetyInvariant).length,
     };
   }
 }

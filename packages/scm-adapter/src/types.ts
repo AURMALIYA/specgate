@@ -25,6 +25,25 @@ export interface InlineComment {
   body: string;
 }
 
+export interface MergeRequest {
+  /** "owner/name" */
+  repo: string;
+  prNumber: number;
+  method?: "merge" | "squash" | "rebase";
+}
+
+export interface MergeResult {
+  merged: boolean;
+  sha?: string;
+  message?: string;
+  dryRun?: boolean;
+}
+
+/** Merges a pull request. Neutral interface; concrete impls per SCM. */
+export interface PullRequestMerger {
+  merge(req: MergeRequest): Promise<MergeResult>;
+}
+
 export interface ScmAdapter {
   /** Emit an annotation surfaced on the PR / commit. */
   emitAnnotation(a: Annotation): void | Promise<void>;

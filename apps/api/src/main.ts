@@ -1,6 +1,6 @@
 import { loadConfig } from "@specgate/config";
 import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate/llm-adapter";
-import { GitHubHandoffTarget, GitHubIdentityProvider } from "@specgate/scm-adapter";
+import { DryRunMerger, GitHubHandoffTarget, GitHubIdentityProvider, GitHubMerger, type PullRequestMerger } from "@specgate/scm-adapter";
 import { ReplitTarget } from "@specgate/replit-adapter";
 import { DryRunTarget, type GenerationTarget } from "@specgate/dispatch";
 import { StaticIdentityProvider, type IdentityProvider } from "@specgate/rbac";
@@ -43,10 +43,14 @@ if ((targetKind === "git" || targetKind === "replit") && ghToken && repo) {
       : handoff;
 }
 
+// Merge: real GitHub merge when a token is present, else a no-op dry-run.
+const merger: PullRequestMerger = ghToken ? new GitHubMerger({ token: ghToken }) : new DryRunMerger();
+
 const service = new SpecGateService(config, {
   semanticClient,
   assistantClient,
   generationTarget,
+  merger,
   defaultRepo: repo,
 });
 
