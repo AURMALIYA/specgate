@@ -23,6 +23,7 @@ describe("roleFromGitHubPermission", () => {
 describe("GitHubIdentityProvider", () => {
   it("authenticates via /user and resolves role from repo permission", async () => {
     const idp = new GitHubIdentityProvider({
+      serverToken: "srv",
       fetchImpl: fetchReturning({
         "/user": { login: "octocat", name: "Octo Cat" },
         "/collaborators/octocat/permission": { permission: "write" },

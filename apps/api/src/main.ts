@@ -1,6 +1,7 @@
 import { loadConfig } from "@specgate/config";
 import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate/llm-adapter";
-import { DryRunMerger, GitHubHandoffTarget, GitHubIdentityProvider, GitHubMerger, type PullRequestMerger } from "@specgate/scm-adapter";
+import { DryRunMerger, GitHubHandoffTarget, GitHubIdentityProvider, GitHubMerger, GitHubOAuth, type PullRequestMerger } from "@specgate/scm-adapter";
+import { SessionStore } from "./sessions.js";
 import { ReplitTarget } from "@specgate/replit-adapter";
 import { DryRunTarget, type GenerationTarget } from "@specgate/dispatch";
 import { FileProjectStore, StaticIdentityProvider, type IdentityProvider, type ProjectStore } from "@specgate/rbac";
@@ -74,7 +75,7 @@ const service = new SpecGateService(config, {
 const authEnabled = process.env["SPECGATE_AUTH"] === "on";
 const identity: IdentityProvider =
   process.env["SPECGATE_IDENTITY"] === "github"
-    ? new GitHubIdentityProvider()
+    ? new GitHubIdentityProvider({ serverToken: ghToken })
     : new StaticIdentityProvider({
         "dev-admin": { id: "admin", name: "Dev Admin" },
         "dev-contributor": { id: "contrib", name: "Dev Contributor" },
@@ -82,16 +83,27 @@ const identity: IdentityProvider =
       });
 const access = new AccessController(identity, projectStore, authEnabled);
 
+// Sign-in: a session store, plus GitHub OAuth when a client id/secret are set.
+const sessions = new SessionStore();
+const oauth =
+  process.env["GITHUB_CLIENT_ID"] && process.env["GITHUB_CLIENT_SECRET"]
+    ? new GitHubOAuth({
+        clientId: process.env["GITHUB_CLIENT_ID"],
+        clientSecret: process.env["GITHUB_CLIENT_SECRET"],
+        redirectUri: process.env["SPECGATE_OAUTH_CALLBACK"] ?? `http://localhost:${port}/auth/github/callback`,
+      })
+    : undefined;
+
 // Optional fixed-window rate limiting (requests/min per credential or address).
 const rateLimit = Number(process.env["SPECGATE_RATE_LIMIT"] ?? "");
 const rateLimiter = Number.isInteger(rateLimit) && rateLimit > 0 ? new RateLimiter(60_000, rateLimit) : undefined;
 
-const server = buildServer(service, { staticDir, access, rateLimiter });
+const server = buildServer(service, { staticDir, access, rateLimiter, sessions, oauth });
 
 server.listen(port, () => {
   process.stdout.write(
     `SpecGate API + dashboard on :${port} (config: ${configPath}; co-author: ${assistantKind}; ` +
-      `auth: ${authEnabled ? "on" : "off"}; persist: ${dataDir ?? "memory"}; ` +
-      `rate-limit: ${rateLimiter ? `${rateLimit}/min` : "off"})\n`,
+      `auth: ${authEnabled ? "on" : "off"}; login: ${oauth ? "github-oauth" : "token"}; ` +
+      `persist: ${dataDir ?? "memory"}; rate-limit: ${rateLimiter ? `${rateLimit}/min` : "off"})\n`,
   );
 });

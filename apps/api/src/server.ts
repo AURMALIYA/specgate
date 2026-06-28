@@ -3,16 +3,20 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, normalize } from "node:path";
 import type { WorkflowEvent } from "@specgate/workflow";
 import type { Capability, Membership } from "@specgate/rbac";
+import type { GitHubOAuth } from "@specgate/scm-adapter";
 import type { AccessController } from "./access.js";
 import type { RateLimiter } from "./ratelimit.js";
+import { readCookie, SESSION_COOKIE, setCookie, clearCookie, type SessionStore } from "./sessions.js";
 import type { DefectInput, SpecGateService } from "./service.js";
 
-/** Extract a bearer/token credential from the request headers. */
-function credentialOf(req: IncomingMessage): string | undefined {
+/** Extract a bearer/token credential: a header token, or the logged-in session's token. */
+function credentialOf(req: IncomingMessage, sessions?: SessionStore): string | undefined {
   const auth = req.headers["authorization"];
   if (typeof auth === "string" && auth.startsWith("Bearer ")) return auth.slice(7).trim();
   const tok = req.headers["x-specgate-token"];
-  return typeof tok === "string" ? tok : undefined;
+  if (typeof tok === "string") return tok;
+  const sid = readCookie(req.headers["cookie"], SESSION_COOKIE);
+  return sid && sessions ? sessions.get(sid)?.token : undefined;
 }
 
 function send(res: ServerResponse, status: number, body: unknown): void {
@@ -49,11 +53,16 @@ export interface ServerOptions {
   access?: AccessController;
   /** Optional rate limiter applied to all routes except /health. */
   rateLimiter?: RateLimiter;
+  /** Session store — enables /auth/* login routes. */
+  sessions?: SessionStore;
+  /** GitHub OAuth helper — enables "Sign in with GitHub". */
+  oauth?: GitHubOAuth;
 }
 
 /** Build an HTTP server exposing the service + dashboard. */
 export function buildServer(service: SpecGateService, options: ServerOptions = {}): Server {
   const access = options.access;
+  const sessions = options.sessions;
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
@@ -64,9 +73,53 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
       if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
 
       if (options.rateLimiter) {
-        const key = credentialOf(req) ?? req.socket.remoteAddress ?? "anon";
+        const key = credentialOf(req, sessions) ?? req.socket.remoteAddress ?? "anon";
         if (!options.rateLimiter.allow(key, Date.now())) {
           return send(res, 429, { error: "rate limit exceeded" });
+        }
+      }
+
+      // --- Auth (sign-in / session) ---
+      if (sessions) {
+        if (method === "GET" && url.pathname === "/auth/me") {
+          const sid = readCookie(req.headers["cookie"], SESSION_COOKIE);
+          const s = sid ? sessions.get(sid) : undefined;
+          return s ? send(res, 200, { principal: s.principal, oauth: !!options.oauth }) : send(res, 401, { error: "not signed in", oauth: !!options.oauth });
+        }
+        if (method === "POST" && url.pathname === "/auth/logout") {
+          const sid = readCookie(req.headers["cookie"], SESSION_COOKIE);
+          if (sid) sessions.delete(sid);
+          res.writeHead(200, { "content-type": "application/json", "set-cookie": clearCookie(SESSION_COOKIE) });
+          return res.end(JSON.stringify({ ok: true }));
+        }
+        // Token-based session (dev + API clients): exchange a token for a session cookie.
+        if (method === "POST" && url.pathname === "/auth/session" && access) {
+          const body = (await readBody(req)) as { token: string };
+          const principal = body.token ? await access.authenticate(body.token) : null;
+          if (!principal) return send(res, 401, { error: "authentication failed" });
+          const s = sessions.create(principal, body.token);
+          res.writeHead(200, { "content-type": "application/json", "set-cookie": setCookie(SESSION_COOKIE, s.id) });
+          return res.end(JSON.stringify({ principal }));
+        }
+        // Sign in with GitHub (OAuth authorization-code flow).
+        if (method === "GET" && url.pathname === "/auth/login") {
+          if (!options.oauth) return send(res, 501, { error: "GitHub OAuth not configured" });
+          const state = Math.random().toString(36).slice(2);
+          res.writeHead(302, { Location: options.oauth.authorizeUrl(state), "set-cookie": setCookie("sg_oauth_state", state) });
+          return res.end();
+        }
+        if (method === "GET" && url.pathname === "/auth/github/callback" && options.oauth && access) {
+          const code = url.searchParams.get("code");
+          const state = url.searchParams.get("state");
+          if (!code || !state || state !== readCookie(req.headers["cookie"], "sg_oauth_state")) {
+            return send(res, 400, { error: "invalid OAuth callback (state mismatch)" });
+          }
+          const token = await options.oauth.exchangeCode(code);
+          const principal = token ? await access.authenticate(token) : null;
+          if (!principal || !token) return send(res, 401, { error: "GitHub sign-in failed" });
+          const s = sessions.create(principal, token);
+          res.writeHead(302, { Location: "/", "set-cookie": setCookie(SESSION_COOKIE, s.id) });
+          return res.end();
         }
       }
 
@@ -95,7 +148,7 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
 
       // --- Projects & RBAC ---
       if (access) {
-        const cred = credentialOf(req);
+        const cred = credentialOf(req, sessions);
         if (method === "GET" && url.pathname === "/projects") return send(res, 200, access.listProjects());
         if (method === "POST" && url.pathname === "/projects") {
           const body = (await readBody(req)) as { id: string; name: string; repo?: string; configPath?: string };
@@ -142,7 +195,7 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         }
         // Admin-only capability gate (when RBAC is enabled). Returns the actor id.
         const gateCapability = async (cap: Capability): Promise<{ allowed: boolean; actor: string; reason?: string }> => {
-          const cred = credentialOf(req);
+          const cred = credentialOf(req, sessions);
           if (!access?.enabled) return { allowed: true, actor: "local" };
           const projectId = req.headers["x-specgate-project"];
           const decision = await access.check(cred, typeof projectId === "string" ? projectId : "", cap);

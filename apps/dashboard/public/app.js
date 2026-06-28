@@ -335,6 +335,39 @@ async function loadProjects() {
   } catch (err) { wrap.innerHTML = `<p class="empty">${esc(err.message)}</p>`; }
 }
 
+// ---------- auth ----------
+async function loadAuth() {
+  const box = document.getElementById("auth");
+  let me = null, oauth = false;
+  try {
+    const r = await fetch("/auth/me");
+    const j = await r.json();
+    oauth = !!j.oauth;
+    if (r.ok) me = j.principal;
+  } catch { /* sessions disabled */ }
+  box.innerHTML = "";
+  if (me) {
+    box.append(el("span", {}, `${me.name || me.id}  `));
+    const out = el("button", { class: "secondary" }, "Sign out");
+    out.onclick = async () => { await api("/auth/logout"); loadAuth(); };
+    box.append(out);
+  } else if (oauth) {
+    const b = el("button", { class: "secondary" }, "Sign in with GitHub");
+    b.onclick = () => { location.href = "/auth/login"; };
+    box.append(b);
+  } else {
+    const b = el("button", { class: "secondary" }, "Sign in");
+    b.onclick = async () => {
+      const token = prompt("Access token (dev: dev-admin / dev-contributor / dev-developer):");
+      if (!token) return;
+      const r = await api("/auth/session", "POST", { token });
+      if (!r.ok) alert(r.json.error || "sign-in failed");
+      loadAuth();
+    };
+    box.append(b);
+  }
+}
+
 // ---------- wiring ----------
 document.getElementById("refresh").addEventListener("click", refresh);
 document.getElementById("coauthor-run").addEventListener("click", coauthor);
@@ -370,3 +403,4 @@ document.addEventListener("click", async (e) => {
 });
 
 refresh();
+loadAuth();

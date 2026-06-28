@@ -157,6 +157,17 @@ token/PR for live merge.
 **Done when:** an admin overrides a block with a logged, visible justification; merge works against
 GitHub.
 
+## Phase 14 — Sign in with GitHub (login wired) — ✅ SHIPPED
+**Goal:** real authentication in the browser; the Phase 9 login follow-up.
+
+**Shipped:** `scm-adapter` `GitHubOAuth` (authorize URL + code exchange) and a fixed
+`GitHubIdentityProvider.resolveRole` (uses a server token to read repo permission); `apps/api`
+`SessionStore` + cookie + `/auth/login`, `/auth/github/callback`, `/auth/session` (token path for
+dev/API), `/auth/me`, `/auth/logout`; credential resolution falls back to the session cookie so
+browser users hit RBAC-gated endpoints; dashboard header sign-in/sign-out. Verified: HTTP session
+flow (sign-in→cookie→/auth/me→logout) and the dashboard header showing the signed-in user.
+**Needs setup:** `GITHUB_CLIENT_ID/SECRET` + `SPECGATE_OAUTH_CALLBACK` for the live OAuth redirect.
+
 ## Phase 13 — Full dashboard (engine reflected in the UI) — ✅ SHIPPED
 **Goal:** the dashboard surfaces what the engine can do, not just metrics.
 

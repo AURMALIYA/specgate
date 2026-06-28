@@ -48,6 +48,11 @@ export class AccessController {
     return this.identity.authenticate(credential);
   }
 
+  /** Authenticate a token to a principal (used by the login flow). */
+  async authenticate(credential: string): Promise<Principal | null> {
+    return this.identity.authenticate(credential);
+  }
+
   /** Decide whether a credential may perform a capability in a project. */
   async check(credential: string | undefined, projectId: string, capability: Capability): Promise<AccessDecision> {
     if (!this.enabled) return { allowed: true, reason: "auth disabled" };

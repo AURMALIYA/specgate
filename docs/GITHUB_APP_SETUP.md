@@ -84,15 +84,24 @@ token minted from the App) with the permissions above. Then set env (see [`.env.
 
 ---
 
-## Honest status of the login UI
+### Enable "Sign in with GitHub" (now wired)
 
-The identity *provider* and role mapping are built and the token-based paths (comments, merge,
-dispatch, capability checks) work today. The **interactive "Sign in with GitHub" web flow + callback
-handler** for the dashboard is the one remaining build item (the Phase 9 follow-up): today a caller
-authenticates by presenting a user token to the API (`Authorization: Bearer <token>` /
-`x-specgate-token`), and the dashboard has no login screen yet. Track A (CI gate) is unaffected and
-fully live. When you want the dashboard login wired end-to-end, that's a small, well-scoped addition
-on top of the existing `GitHubIdentityProvider`.
+The dashboard has a real login. Set these and the header button becomes **Sign in with GitHub** (it
+redirects to GitHub, exchanges the code, and creates a session cookie); without them it falls back to
+a token sign-in for dev/API clients.
+
+- [ ] `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — from the GitHub App (OAuth credentials).
+- [ ] `SPECGATE_OAUTH_CALLBACK` — must exactly match the app's callback URL, e.g.
+      `https://<your-host>/auth/github/callback`.
+- [ ] `SPECGATE_IDENTITY=github` + `GITHUB_TOKEN` (the app/installation token) — so roles resolve
+      from repo permissions (the server reads a member's permission using this token).
+
+Flow: header → `/auth/login` → GitHub consent → `/auth/github/callback` → session cookie → the
+dashboard calls `/auth/me`, shows the user, and all privileged actions are gated by the signed-in
+role. `/auth/logout` clears it.
+
+> Without OAuth env, `/auth/session` accepts a token directly (dev tokens or a real user token) — the
+> same session machinery, just no redirect. Track A (CI gate) is independent and live regardless.
 
 ---
 

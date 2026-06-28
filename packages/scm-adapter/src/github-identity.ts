@@ -2,6 +2,12 @@ import type { IdentityProvider, Principal, Project, Role } from "@specgate/rbac"
 
 export interface GitHubIdentityOptions {
   apiBaseUrl?: string;
+  /**
+   * Server token (app/installation token) used to read a member's repo
+   * permission level — that endpoint requires push access, so it must be a
+   * privileged server token, not the logged-in user's token.
+   */
+  serverToken?: string;
   fetchImpl?: typeof fetch;
 }
 
@@ -31,7 +37,7 @@ export class GitHubIdentityProvider implements IdentityProvider {
   private readonly base: string;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(opts: GitHubIdentityOptions = {}) {
+  constructor(private readonly opts: GitHubIdentityOptions = {}) {
     this.base = opts.apiBaseUrl ?? "https://api.github.com";
     this.fetchImpl = opts.fetchImpl ?? fetch;
   }
@@ -54,13 +60,11 @@ export class GitHubIdentityProvider implements IdentityProvider {
   }
 
   async resolveRole(principal: Principal, project: Project): Promise<Role | null> {
-    if (!project.repo) return null;
-    // The caller's token must be provided out-of-band; here we use an app/installation
-    // token via the principal? In practice the token is threaded by the caller. For the
-    // provider contract we read the collaborator's permission level.
+    const serverToken = this.opts.serverToken;
+    if (!project.repo || !serverToken) return null;
     const res = await this.fetchImpl(
       `${this.base}/repos/${project.repo}/collaborators/${principal.id}/permission`,
-      { headers: { accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28" } },
+      { headers: this.headers(serverToken) },
     );
     if (!res.ok) return null;
     const body = (await res.json()) as { permission?: string };
