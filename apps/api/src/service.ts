@@ -254,6 +254,35 @@ export class SpecGateService {
     return result;
   }
 
+  /**
+   * One aggregated view of everything the engine knows about a spec — for the
+   * dashboard detail view: parsed model, re-derived tier, gate findings,
+   * verification harness, conflicts, workflow state, provenance, and overrides.
+   */
+  specDetail(specId: string) {
+    const entry = this.specs.get(specId);
+    const instance = this.instances.get(specId);
+    if (!entry || !instance) throw new Error(`unknown spec ${specId}`);
+    const gate = runGate({ raw: entry.raw, config: this.config });
+    return {
+      id: specId,
+      frontmatter: entry.parsed.frontmatter,
+      sections: Object.keys(entry.parsed.sections),
+      accessMatrix: entry.parsed.accessMatrix,
+      criteria: entry.parsed.criteria,
+      contentHash: entry.parsed.contentHash,
+      tier: entry.tier,
+      gate: { ok: gate.ok, blockCount: gate.blockCount, warnCount: gate.warnCount, findings: gate.findings, manualChecklist: gate.manualChecklist },
+      verification: this.verify(specId),
+      conflicts: this.conflicts().filter((c) => c.specIds.includes(specId)),
+      instance,
+      eligibility: this.runEligibility(specId),
+      canMerge: this.canMerge(specId),
+      provenance: this.provenance.bySpec(specId),
+      overrides: this.overridesForSpec(specId),
+    };
+  }
+
   /** Run the verification harness for a spec (separate stage from generation). */
   verify(specId: string): HarnessResult {
     const entry = this.specs.get(specId);

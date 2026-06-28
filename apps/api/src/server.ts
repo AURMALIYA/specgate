@@ -134,6 +134,7 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
           const result = service.transition(specId, (await readBody(req)) as WorkflowEvent);
           return send(res, result.ok ? 200 : 409, result);
         }
+        if (method === "GET" && parts[2] === "detail") return send(res, 200, service.specDetail(specId));
         if (method === "POST" && parts[2] === "verify") return send(res, 200, service.verify(specId));
         if (method === "POST" && parts[2] === "semantic") return send(res, 200, await service.semantic(specId));
         if (method === "GET" && parts[2] === "run-eligibility") {

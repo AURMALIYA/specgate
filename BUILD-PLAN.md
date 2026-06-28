@@ -157,6 +157,18 @@ token/PR for live merge.
 **Done when:** an admin overrides a block with a logged, visible justification; merge works against
 GitHub.
 
+## Phase 13 — Full dashboard (engine reflected in the UI) — ✅ SHIPPED
+**Goal:** the dashboard surfaces what the engine can do, not just metrics.
+
+**Shipped:** `Service.specDetail` + `GET /instances/:id/detail` aggregate the full per-spec engine
+view; the dashboard gained nav (Overview / Audit / Projects), clickable registry rows opening a
+**detail drawer** (tier breakdown with escalation evidence + approvers, gate findings, verification
+harness per-runner, EARS criteria with validity, access matrix, conflicts, provenance, overrides,
+and the **delivery-loop strip** with contextual actions — Submit/Approve/Run/Verify/Sign-off/
+Merge/Override/Block), an **Audit** view (override log) and a **Projects & roles** view (create +
+add members). Verified live: the hidden-RED spec's drawer shows GREEN→RED escalation, the blocking
+finding with evidence, every verification runner, and the loop.
+
 ## Phase 12 — Hardening (cross-cutting) — ✅ SHIPPED
 Durable persistence backend, secrets management, deploy docs, rate limits, observability for the
 audit log.

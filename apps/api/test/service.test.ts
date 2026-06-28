@@ -104,6 +104,21 @@ describe("SpecGateService — full delivery loop", () => {
     expect(prov?.dispatchHandle).toContain(specId);
   });
 
+  it("specDetail aggregates the full engine view of a spec", () => {
+    const svc = new SpecGateService(cfg, { now: () => "t" });
+    const { specId } = svc.ingest(read("config/example-org/specs/storefront-promotion-badge.md"));
+    const d = svc.specDetail(specId);
+    expect(d.id).toBe(specId);
+    expect(d.frontmatter.title).toBeTruthy();
+    expect(d.tier.finalTier).toBe("GREEN");
+    expect(d.gate.ok).toBe(true);
+    expect(d.criteria.length).toBeGreaterThan(0);
+    expect(d.accessMatrix.length).toBeGreaterThan(0);
+    expect(d.verification.results.length).toBeGreaterThan(0);
+    expect(d.instance.state).toBe("DRAFT");
+    expect(d.eligibility.eligible).toBe(false); // not APPROVED yet
+  });
+
   it("a RED spec cannot reach APPROVED without all three RED approvers", () => {
     const svc = freshService();
     const { specId, tier } = svc.ingest(read("config/example-org/specs-conflict/hidden-red-merchant-roles.md"), "roles.md");

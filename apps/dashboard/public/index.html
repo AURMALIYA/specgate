@@ -3,53 +3,82 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>SpecGate Dashboard</title>
+    <title>SpecGate</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
     <header>
       <h1>SpecGate</h1>
       <span class="sub">spec-driven development governance</span>
+      <nav>
+        <button class="nav-btn active" data-view="overview">Overview</button>
+        <button class="nav-btn" data-view="audit">Audit</button>
+        <button class="nav-btn" data-view="projects">Projects</button>
+      </nav>
       <button id="refresh">Refresh</button>
     </header>
 
     <main>
-      <section id="coauthor">
-        <h2>Co-author a spec</h2>
-        <p class="hint">Paste a rough spec. The assistant revises it until it passes the gate — every revision is re-gated, so the gate stays the source of truth.</p>
-        <textarea id="coauthor-input" placeholder="--- &#10;id: SPEC-0001&#10;title: ...&#10;---&#10;&#10;# 1. Linkage&#10;..."></textarea>
-        <div class="row">
-          <button id="coauthor-run">Improve until it passes</button>
-          <span id="coauthor-status" class="muted"></span>
-        </div>
-        <pre id="coauthor-output" class="output" hidden></pre>
-      </section>
+      <!-- OVERVIEW -->
+      <div id="view-overview" class="view">
+        <section id="coauthor">
+          <h2>Co-author a spec</h2>
+          <p class="hint">Paste a rough spec. The assistant revises it until it passes the gate — every revision is re-gated, so the gate stays the source of truth.</p>
+          <textarea id="coauthor-input" placeholder="--- &#10;id: SPEC-0001&#10;---&#10;# 1. Linkage&#10;..."></textarea>
+          <div class="row">
+            <button id="coauthor-run">Improve until it passes</button>
+            <button id="coauthor-ingest" class="secondary">Ingest into registry</button>
+            <span id="coauthor-status" class="muted"></span>
+          </div>
+          <pre id="coauthor-output" class="output" hidden></pre>
+        </section>
 
-      <section id="metrics">
-        <h2>Observability</h2>
-        <div class="cards" id="metric-cards"></div>
-      </section>
+        <section id="metrics"><h2>Observability</h2><div class="cards" id="metric-cards"></div></section>
+        <section id="tiers"><h2>Risk-tier distribution</h2><div class="bars" id="tier-bars"></div></section>
+        <section id="conflicts"><h2>Open conflicts</h2><div id="conflict-list"></div></section>
+        <section id="registry">
+          <h2>Registry <span class="muted" style="font-weight:400">— click a spec for the full engine view</span></h2>
+          <table id="registry-table">
+            <thead><tr><th>Spec</th><th>Title</th><th>Declared</th><th>Enforced</th><th>State</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
 
-      <section id="tiers">
-        <h2>Risk-tier distribution</h2>
-        <div class="bars" id="tier-bars"></div>
-      </section>
+      <!-- AUDIT -->
+      <div id="view-audit" class="view" hidden>
+        <section><h2>Override audit log</h2>
+          <p class="hint">Every admin override is immutable and attributable — this is what keeps "spec is a contract" meaningful under full-override.</p>
+          <div id="audit-list"></div>
+        </section>
+      </div>
 
-      <section id="conflicts">
-        <h2>Open conflicts</h2>
-        <div id="conflict-list"></div>
-      </section>
-
-      <section id="registry">
-        <h2>Registry</h2>
-        <table id="registry-table">
-          <thead>
-            <tr><th>Spec</th><th>Title</th><th>Tier</th><th>Provides</th><th>Categories</th><th>Run</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </section>
+      <!-- PROJECTS -->
+      <div id="view-projects" class="view" hidden>
+        <section><h2>Projects &amp; roles</h2>
+          <div class="row">
+            <input id="proj-id" placeholder="project-id" />
+            <input id="proj-name" placeholder="Project name" />
+            <input id="proj-repo" placeholder="owner/repo (optional)" />
+            <button id="proj-create">Create</button>
+            <span id="proj-status" class="muted"></span>
+          </div>
+          <div id="project-list"></div>
+        </section>
+      </div>
     </main>
+
+    <!-- SPEC DETAIL DRAWER -->
+    <div id="drawer" hidden>
+      <div class="drawer-bg"></div>
+      <div class="drawer-panel">
+        <div class="drawer-head">
+          <h2 id="drawer-title">Spec</h2>
+          <button id="drawer-close">✕</button>
+        </div>
+        <div id="drawer-body"></div>
+      </div>
+    </div>
 
     <script src="/app.js"></script>
   </body>
