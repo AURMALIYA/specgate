@@ -64,7 +64,26 @@ describe("runAction", () => {
       mode: "speckit",
     });
     expect(result.conclusion).toBe("success");
-    expect(result.batch.reports[0]?.specId).toBe("NW-SK-PROMO-001");
-    expect(adapter.summary).toContain("Spec Kit features");
+    expect(result.view.reports[0]?.specId).toBe("NW-SK-PROMO-001");
+  });
+
+  it("repo mode: scopes findings to the changed spec but names conflicts with unchanged specs", async () => {
+    const adapter = new FakeAdapter();
+    const support = resolve(ROOT, "config/example-org/specs-conflict/order-notes-support.md");
+    const readonly = resolve(ROOT, "config/example-org/specs-conflict/order-notes-readonly.md");
+    const result = await runAction({
+      specPaths: [support, readonly], // whole "repo"
+      changedPaths: [support], // only this one changed in the PR
+      configPath: CONFIG,
+      adapter,
+      mode: "repo",
+    });
+    // Only the changed spec is reported...
+    expect(result.view.reports).toHaveLength(1);
+    expect(result.view.reports[0]?.specId).toBe("NW-NOTES-SUPPORT");
+    // ...but the conflict with the UNCHANGED readonly spec is surfaced + blocks.
+    expect(result.conclusion).toBe("failure");
+    expect(adapter.summary).toContain("NW-NOTES-READONLY");
+    expect(adapter.summary).toContain("Cross-spec conflicts");
   });
 });

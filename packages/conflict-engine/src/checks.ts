@@ -109,6 +109,31 @@ export function detectContractBreaking(
   return findings;
 }
 
+/**
+ * Detect `depends_on` references to specs that are not present in the registry.
+ * Only meaningful with whole-repo context (a partial set will over-report), so
+ * this is NOT part of runDeterministicConflicts — callers with the full repo
+ * (e.g. the PR gate) invoke it explicitly. Blocking.
+ */
+export function detectDanglingDependencies(registry: Registry): ConflictFinding[] {
+  const known = new Set(registry.allSpecs().map((s) => s.id));
+  const findings: ConflictFinding[] = [];
+  for (const rec of registry.allSpecs()) {
+    for (const dep of rec.dependsOn) {
+      if (!known.has(dep)) {
+        findings.push({
+          severity: "block",
+          type: "dangling-dependency",
+          specIds: [rec.id],
+          subject: dep,
+          explanation: `${rec.id} depends_on "${dep}", which is not present in the repository.`,
+        });
+      }
+    }
+  }
+  return findings;
+}
+
 /** Convert a tier escalation into a hidden-RED / tier-mismatch conflict finding. */
 export function hiddenRedFinding(specId: string, tier: TierResult): ConflictFinding | null {
   if (!tier.escalated) return null;

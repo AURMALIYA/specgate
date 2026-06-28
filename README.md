@@ -70,6 +70,31 @@ node packages/cli/dist/bin.js tier config/example-org/specs-conflict --config co
 node packages/cli/dist/bin.js conflicts config/example-org/specs-conflict --config config/example-org/config.yaml
 ```
 
+## PR governance (collaborate on GitHub)
+
+Specs are a contract authored collaboratively: write them in a repo, open a PR, and SpecGate gates
+it. In **repo mode** the Action gates the PR's *changed* specs against **every** spec in the repo,
+so cross-spec conflicts and dependencies resolve against the full set — then it posts a sticky
+**"what to fix / improve"** comment scoped to the PR (naming any conflicting *unchanged* specs) and
+fails the check on blocking findings.
+
+```yaml
+# .github/workflows — gate PRs against the whole repo
+- uses: ./apps/action
+  with:
+    mode: repo
+    config: config/your-org.config.yaml
+    specs: specs                         # all repo specs
+    changed: ${{ steps.changed.outputs.files }}   # PR's changed spec files (from a git diff step)
+    pr_number: ${{ github.event.pull_request.number }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Make rejection enforceable:** mark the SpecGate job a **required status check** in the branch's
+protection rules (Settings → Branches). A failing gate then blocks the merge — that's the
+"rejection." See [`.github/workflows/spec-gate.yml`](.github/workflows/spec-gate.yml) for a complete
+`pr-gate-repo-mode` job with the changed-files diff step.
+
 ## Configuration
 
 - [`config/default.config.yaml`](config/default.config.yaml) — documented, neutral baseline.

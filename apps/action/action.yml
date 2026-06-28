@@ -9,9 +9,18 @@ inputs:
     description: "Path to the org SpecGate config (YAML)."
     required: true
   mode:
-    description: "'files' (default) gates the given spec files; 'speckit' treats paths as Spec Kit specs/<feature>/spec.md and pulls constitution/plan/tasks as context."
+    description: "'files' (default) gates the given spec files; 'speckit' treats paths as Spec Kit specs/<feature>/spec.md; 'repo' gates the whole repo and scopes findings to the PR's changed specs."
     required: false
     default: "files"
+  changed:
+    description: "repo mode: whitespace/comma/newline-separated changed spec files for this PR (from a diff step)."
+    required: false
+  pr_number:
+    description: "Pull request number, so findings post as a sticky PR comment (requires github_token)."
+    required: false
+  github_token:
+    description: "Token used to post the PR comment. Pass secrets.GITHUB_TOKEN."
+    required: false
 runs:
   using: "node20"
   main: "dist/main.js"

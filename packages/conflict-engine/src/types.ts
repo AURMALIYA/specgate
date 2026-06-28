@@ -6,6 +6,7 @@ export type ConflictType =
   | "hidden-red"
   | "dependency-cycle"
   | "contract-breaking"
+  | "dangling-dependency"
   | "semantic";
 
 /** A cross-spec (or tier) conflict finding. */

@@ -4,6 +4,7 @@ import { evaluatePolicy, type ManualChecklistItem, type PolicyRuntimeFacts } fro
 import { classifyTier, type TierResult } from "@specgate/risk-tier";
 import { Registry } from "@specgate/registry";
 import {
+  detectDanglingDependencies,
   hiddenRedFinding,
   runDeterministicConflicts,
   type ConflictFinding,
@@ -124,12 +125,24 @@ export interface BatchGateReport {
   warnCount: number;
 }
 
+export interface RunGateBatchOptions {
+  /**
+   * Also flag depends_on references to specs not in this set. Only safe with
+   * whole-repo context (a partial set over-reports), so the PR gate sets it.
+   */
+  includeDanglingDeps?: boolean;
+}
+
 /**
  * Run the full gate over a set of specs, including cross-spec conflict
  * detection. Each conflict is attached to every involved spec's report so the
  * SCM adapter can annotate the right files.
  */
-export function runGateBatch(specs: BatchSpecInput[], config: SpecGateConfig): BatchGateReport {
+export function runGateBatch(
+  specs: BatchSpecInput[],
+  config: SpecGateConfig,
+  options: RunGateBatchOptions = {},
+): BatchGateReport {
   const results = specs.map((s) =>
     gateOne({ raw: s.raw, config, path: s.path, facts: s.facts, changedPaths: s.changedPaths }),
   );
@@ -138,6 +151,7 @@ export function runGateBatch(specs: BatchSpecInput[], config: SpecGateConfig): B
   const parsed = results.map((r) => r.parsed).filter((p): p is ParsedSpec => !!p);
   const registry = Registry.fromParsedSpecs(parsed);
   const conflicts = runDeterministicConflicts(registry);
+  if (options.includeDanglingDeps) conflicts.push(...detectDanglingDependencies(registry));
 
   // Distribute conflicts onto each involved spec report.
   const byId = new Map<string, GateReport>();
@@ -163,4 +177,36 @@ export function runGateBatch(specs: BatchSpecInput[], config: SpecGateConfig): B
   const blockCount = reports.reduce((n, r) => n + r.blockCount, 0);
   const warnCount = reports.reduce((n, r) => n + r.warnCount, 0);
   return { ok: blockCount === 0, reports, conflicts, blockCount, warnCount };
+}
+
+export interface ScopedReview {
+  /** Reports for the changed specs only. */
+  reports: GateReport[];
+  /** Conflicts that involve at least one changed spec (may name unchanged specs). */
+  conflicts: ConflictFinding[];
+  blockCount: number;
+  warnCount: number;
+  ok: boolean;
+}
+
+function normalizePath(p: string): string {
+  return p.replace(/^\.\//, "").replace(/\\/g, "/");
+}
+
+/**
+ * Scope a whole-repo batch to a pull request: keep only the changed specs'
+ * reports plus any conflict that involves a changed spec (so a changed spec
+ * colliding with an UNCHANGED one is still surfaced, naming the other spec).
+ */
+export function scopeBatchToChanged(batch: BatchGateReport, changedPaths: string[]): ScopedReview {
+  const changed = new Set(changedPaths.map(normalizePath));
+  const reports = batch.reports.filter((r) => r.path && changed.has(normalizePath(r.path)));
+  const changedIds = new Set(reports.map((r) => r.specId).filter((id): id is string => !!id));
+  // `conflicts` is for rendering (it names the other spec). Conflicts are already
+  // distributed onto each involved report's findings, so the counts come from the
+  // reports — no double counting.
+  const conflicts = batch.conflicts.filter((c) => c.specIds.some((id) => changedIds.has(id)));
+  const blockCount = reports.reduce((n, r) => n + r.blockCount, 0);
+  const warnCount = reports.reduce((n, r) => n + r.warnCount, 0);
+  return { reports, conflicts, blockCount, warnCount, ok: blockCount === 0 };
 }

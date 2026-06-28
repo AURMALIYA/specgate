@@ -49,9 +49,16 @@ test). Each phase: keep `main` green, commit at the end, write tests as you go.
 
 ---
 
-## Phase 8 — Whole-repo PR governance (the collaboration loop)
+## Phase 8 — Whole-repo PR governance (the collaboration loop) — ✅ SHIPPED
 **Goal:** a PR that doesn't meet governance is blocked with a precise "what to fix/improve"
 comment, computed against **all** specs in the repo.
+
+**Shipped:** `conflict-engine` dangling-dependency check; `gate` `runGateBatch({includeDanglingDeps})`
++ `scopeBatchToChanged`; `cli` `runRepoPrGate` (whole-repo gate, scoped to changed); `apps/action`
+`repo` mode + the "what to fix/improve" comment renderer; `scm-adapter` `GitHubApiAdapter` (sticky PR
+comment via REST); CI `pr-gate-repo-mode` job + changed-file diff step. Verified: a PR changing one
+spec is blocked and names its conflict with an *unchanged* spec.
+
 
 - Action: ingest **all** `specs/**/*.md` into the registry; detect the PR's **changed** specs
   (git diff vs base); run `runGateBatch` over the full set; **scope reported findings** to changed

@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "@specgate/config";
 import { describe, expect, it } from "vitest";
-import { runGate, runGateBatch } from "../src/gate.js";
+import { runGate, runGateBatch, scopeBatchToChanged } from "../src/gate.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const exampleCfg = loadConfig(resolve(ROOT, "config/example-org/config.yaml"));
@@ -75,5 +75,30 @@ describe("runGateBatch — Phase 2 done-criteria", () => {
     expect(report.findings.some((f) => f.code === "tier.hidden-red")).toBe(true);
     expect(report.tier?.requiredApproverRoles).toContain("pci-compliance-officer");
     expect(batch.ok).toBe(false);
+  });
+});
+
+describe("whole-repo PR gate (Phase 8)", () => {
+  it("flags a dangling dependency only with includeDanglingDeps", () => {
+    const spec = { raw: read("config/example-org/specs-conflict/dangling-dep.md"), path: "dangling.md" };
+    expect(runGateBatch([spec], exampleCfg).conflicts.some((c) => c.type === "dangling-dependency")).toBe(false);
+    const withDeps = runGateBatch([spec], exampleCfg, { includeDanglingDeps: true });
+    expect(withDeps.conflicts.some((c) => c.type === "dangling-dependency")).toBe(true);
+    expect(withDeps.ok).toBe(false);
+  });
+
+  it("scopes a whole-repo batch to the changed spec but keeps conflicts that name unchanged specs", () => {
+    const batch = runGateBatch(
+      [
+        { raw: read("config/example-org/specs-conflict/order-notes-support.md"), path: "a/support.md" },
+        { raw: read("config/example-org/specs-conflict/order-notes-readonly.md"), path: "b/readonly.md" },
+      ],
+      exampleCfg,
+    );
+    const scoped = scopeBatchToChanged(batch, ["a/support.md"]);
+    expect(scoped.reports.map((r) => r.specId)).toEqual(["NW-NOTES-SUPPORT"]);
+    // The access conflict with the UNCHANGED readonly spec is still in scope.
+    expect(scoped.conflicts.some((c) => c.specIds.includes("NW-NOTES-READONLY"))).toBe(true);
+    expect(scoped.ok).toBe(false);
   });
 });

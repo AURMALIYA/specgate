@@ -10,6 +10,7 @@ import {
   detectAccessMatrixConflicts,
   detectCapabilityOwnership,
   detectContractBreaking,
+  detectDanglingDependencies,
   detectDependencyCycles,
   hiddenRedFinding,
   runDeterministicConflicts,
@@ -96,6 +97,26 @@ describe("contract breaking change", () => {
     store.put(rec({ id: "A", contracts: [{ name: "pay", version: 1, required_fields: ["amount"] }] }));
     store.put(rec({ id: "B", contracts: [{ name: "pay", version: 2, required_fields: ["amount", "currency"] }] }));
     expect(detectContractBreaking(new Registry(store))).toHaveLength(0);
+  });
+});
+
+describe("dangling dependency", () => {
+  it("flags depends_on referencing a spec not in the registry", () => {
+    const store = new InMemoryStore();
+    store.put(rec({ id: "A", dependsOn: ["B", "GHOST"] }));
+    store.put(rec({ id: "B" }));
+    const findings = detectDanglingDependencies(new Registry(store));
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.type).toBe("dangling-dependency");
+    expect(findings[0]?.subject).toBe("GHOST");
+    expect(findings[0]?.specIds).toEqual(["A"]);
+  });
+
+  it("does not flag when all dependencies are present", () => {
+    const store = new InMemoryStore();
+    store.put(rec({ id: "A", dependsOn: ["B"] }));
+    store.put(rec({ id: "B" }));
+    expect(detectDanglingDependencies(new Registry(store))).toHaveLength(0);
   });
 });
 

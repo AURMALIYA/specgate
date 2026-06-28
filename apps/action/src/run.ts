@@ -1,16 +1,19 @@
 import { dirname } from "node:path";
-import { resolveConfig, runBatchOverFiles } from "@specgate/cli";
-import { runGateBatch, type BatchGateReport, type BatchSpecInput, type GateReport } from "@specgate/gate";
+import { resolveConfig, runBatchOverFiles, runRepoPrGate } from "@specgate/cli";
+import { runGateBatch, type BatchSpecInput, type GateReport } from "@specgate/gate";
 import { loadSpecKitFeature } from "@specgate/speckit-adapter";
 import type { Annotation, CheckConclusion, ScmAdapter } from "@specgate/scm-adapter";
+import { buildReviewComment, type ReviewView } from "./comment.js";
 
-export type ActionMode = "files" | "speckit";
+export type ActionMode = "files" | "speckit" | "repo";
 
 export interface RunActionInput {
+  /** In files/speckit mode: the specs to gate. In repo mode: paths covering ALL repo specs. */
   specPaths: string[];
+  /** repo mode: the PR's changed spec files (findings are scoped to these). */
+  changedPaths?: string[];
   configPath?: string;
   adapter: ScmAdapter;
-  /** "files": gate the given spec files. "speckit": treat paths as Spec Kit specs/<feature>/spec.md. */
   mode?: ActionMode;
 }
 
@@ -18,7 +21,7 @@ export interface RunActionResult {
   conclusion: CheckConclusion;
   blockCount: number;
   warnCount: number;
-  batch: BatchGateReport;
+  view: ReviewView;
 }
 
 function annotationsFor(report: GateReport): Annotation[] {
@@ -30,40 +33,7 @@ function annotationsFor(report: GateReport): Annotation[] {
   }));
 }
 
-function buildSummary(batch: BatchGateReport, mode: ActionMode): string {
-  const lines = [`## SpecGate gate${mode === "speckit" ? " (Spec Kit features)" : ""}`, ""];
-  lines.push(`- Specs checked: **${batch.reports.length}**`);
-  lines.push(`- Blocking findings: **${batch.blockCount}**`);
-  lines.push(`- Warnings: **${batch.warnCount}**`);
-  lines.push(`- Cross-spec conflicts: **${batch.conflicts.length}**`);
-  lines.push("");
-  for (const r of batch.reports) {
-    const tier = r.tier
-      ? r.tier.escalated
-        ? ` — tier ${r.tier.declaredTier}→**${r.tier.finalTier}** (escalated)`
-        : ` — tier ${r.tier.finalTier}`
-      : "";
-    lines.push(`### ${r.ok ? "✅" : "❌"} ${r.specId ?? "<unparsed>"} — \`${r.path ?? "?"}\`${tier}`);
-    if (r.findings.length === 0) lines.push("- _No findings._");
-    else
-      for (const f of r.findings) {
-        const mark = f.severity === "block" ? "❌" : "⚠️";
-        lines.push(`- ${mark} \`${f.source}:${f.code}\` ${f.message}`);
-      }
-    lines.push("");
-  }
-  return lines.join("\n");
-}
-
-/**
- * Build the batch for Spec Kit mode: each path is a `specs/<feature>/spec.md`
- * (or feature dir). The feature's constitution/plan/tasks/contracts are loaded
- * as prompt-context so the constitution rules scan them too.
- */
-function speckitBatch(
-  specPaths: string[],
-  config: Parameters<typeof runGateBatch>[1],
-): { batch: BatchGateReport; missing: string[] } {
+function speckitInputs(specPaths: string[]): { inputs: BatchSpecInput[]; missing: string[] } {
   const featureDirs = [...new Set(specPaths.map((p) => (p.endsWith("spec.md") ? dirname(p) : p)))];
   const inputs: BatchSpecInput[] = [];
   const missing: string[] = [];
@@ -75,43 +45,52 @@ function speckitBatch(
       missing.push(dir);
     }
   }
-  return { batch: runGateBatch(inputs, config), missing };
+  return { inputs, missing };
 }
 
 /** Core Action logic, decoupled from process/env for testability. */
 export async function runAction(input: RunActionInput): Promise<RunActionResult> {
   const mode = input.mode ?? "files";
   const config = resolveConfig(input.configPath);
-  const { batch, missing } =
-    mode === "speckit" ? speckitBatch(input.specPaths, config) : runBatchOverFiles(input.specPaths, config);
+
+  let view: ReviewView;
+  let missing: string[] = [];
+
+  if (mode === "repo") {
+    const r = runRepoPrGate(input.specPaths, input.changedPaths ?? [], config);
+    view = r.scoped;
+    missing = r.missing;
+  } else if (mode === "speckit") {
+    const { inputs, missing: m } = speckitInputs(input.specPaths);
+    missing = m;
+    view = runGateBatch(inputs, config);
+  } else {
+    const r = runBatchOverFiles(input.specPaths, config);
+    view = r.batch;
+    missing = r.missing;
+  }
 
   for (const m of missing) {
-    await input.adapter.emitAnnotation({
-      level: "warning",
-      title: "SpecGate",
-      message: mode === "speckit" ? `No spec.md in Spec Kit feature: ${m}` : `Spec path not found: ${m}`,
-    });
+    await input.adapter.emitAnnotation({ level: "warning", title: "SpecGate", message: `Spec path not found: ${m}` });
   }
-
-  for (const report of batch.reports) {
+  for (const report of view.reports) {
     for (const a of annotationsFor(report)) await input.adapter.emitAnnotation(a);
   }
-
   await input.adapter.postInlineComments(
-    batch.conflicts.flatMap((c) =>
+    view.conflicts.flatMap((c) =>
       c.specIds
-        .map((id) => batch.reports.find((r) => r.specId === id)?.path)
+        .map((id) => view.reports.find((r) => r.specId === id)?.path)
         .filter((p): p is string => !!p)
         .map((path) => ({ path, line: 1, body: `[${c.type}] ${c.explanation}` })),
     ),
   );
 
-  const conclusion: CheckConclusion = batch.blockCount > 0 ? "failure" : "success";
-  await input.adapter.postSummary(buildSummary(batch, mode));
+  const conclusion: CheckConclusion = view.blockCount > 0 ? "failure" : "success";
+  await input.adapter.postSummary(buildReviewComment(view, mode));
   await input.adapter.setConclusion(
     conclusion,
-    `${batch.reports.length} spec(s), ${batch.blockCount} blocking, ${batch.warnCount} warning(s), ${batch.conflicts.length} conflict(s).`,
+    `${view.reports.length} spec(s), ${view.blockCount} blocking, ${view.warnCount} warning(s), ${view.conflicts.length} conflict(s).`,
   );
 
-  return { conclusion, blockCount: batch.blockCount, warnCount: batch.warnCount, batch };
+  return { conclusion, blockCount: view.blockCount, warnCount: view.warnCount, view };
 }

@@ -51,15 +51,35 @@ jobs:
       - name: Spec Kit — gate a Spec Kit feature directory
         run: node packages/speckit-adapter/dist/bin.js gate config/example-org/speckit-example/specs/001-promo-badge --config config/example-org/config.yaml
 
-  # Example of running the Action itself in Spec Kit mode on changed specs.
-  # In a real repo, compute changed `specs/**/spec.md` paths and pass them as `specs`.
-  speckit-gate-action-example:
+  # Example: gate a PR in REPO mode — evaluate the changed specs against EVERY
+  # spec in the repo and post a sticky "what to fix/improve" comment. Make this
+  # job a REQUIRED status check in branch protection so a failing gate blocks merge.
+  pr-gate-repo-mode:
     runs-on: ubuntu-latest
-    if: ${{ false }} # illustrative; enable and wire `specs` to your PR's changed spec.md files
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      contents: read
+      pull-requests: write   # to post the sticky review comment
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # need the base branch to diff changed specs
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile && pnpm build
+      - name: Compute changed spec files
+        id: changed
+        run: |
+          base="origin/${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD -- 'specs/**/*.md' | tr '\n' ' ')
+          echo "files=$changed" >> "$GITHUB_OUTPUT"
       - uses: ./apps/action
         with:
-          mode: speckit
-          config: config/example-org/config.yaml
-          specs: config/example-org/speckit-example/specs/001-promo-badge/spec.md
+          mode: repo
+          config: config/default.config.yaml
+          specs: specs
+          changed: ${{ steps.changed.outputs.files }}
+          pr_number: ${{ github.event.pull_request.number }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
