@@ -1,6 +1,9 @@
 import { loadConfig } from "@specgate/config";
 import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate/llm-adapter";
+import { GitHubIdentityProvider } from "@specgate/scm-adapter";
+import { StaticIdentityProvider, type IdentityProvider } from "@specgate/rbac";
 import { LocalSpecAssistantClient } from "@specgate/spec-assistant";
+import { AccessController } from "./access.js";
 import { buildServer } from "./server.js";
 import { SpecGateService } from "./service.js";
 
@@ -24,10 +27,25 @@ const assistantClient =
 const assistantKind = config.semantic?.model && hasKey ? "model" : "local (offline, rule-based)";
 
 const service = new SpecGateService(config, { semanticClient, assistantClient });
-const server = buildServer(service, { staticDir });
+
+// RBAC: GitHub identity in production; a static provider for local/dev. Enforcement
+// is opt-in via SPECGATE_AUTH=on (off keeps the keyless local dashboard working).
+const authEnabled = process.env["SPECGATE_AUTH"] === "on";
+const identity: IdentityProvider =
+  process.env["SPECGATE_IDENTITY"] === "github"
+    ? new GitHubIdentityProvider()
+    : new StaticIdentityProvider({
+        "dev-admin": { id: "admin", name: "Dev Admin" },
+        "dev-contributor": { id: "contrib", name: "Dev Contributor" },
+        "dev-developer": { id: "developer", name: "Dev Developer" },
+      });
+const access = new AccessController(identity, undefined, authEnabled);
+
+const server = buildServer(service, { staticDir, access });
 
 server.listen(port, () => {
   process.stdout.write(
-    `SpecGate API + dashboard on :${port} (config: ${configPath}; co-author: ${assistantKind})\n`,
+    `SpecGate API + dashboard on :${port} (config: ${configPath}; co-author: ${assistantKind}; ` +
+      `auth: ${authEnabled ? "on" : "off"})\n`,
   );
 });

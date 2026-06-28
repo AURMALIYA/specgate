@@ -9,6 +9,7 @@
     { "path": "packages/registry" },
     { "path": "packages/conflict-engine" },
     { "path": "packages/spec-assistant" },
+    { "path": "packages/rbac" },
     { "path": "packages/llm-adapter" },
     { "path": "packages/speckit-adapter" },
     { "path": "packages/workflow" },

@@ -19,6 +19,7 @@ const ENGINE_PACKAGES = [
   "registry",
   "conflict-engine",
   "spec-assistant",
+  "rbac",
   "workflow",
   "verification",
   "provenance",

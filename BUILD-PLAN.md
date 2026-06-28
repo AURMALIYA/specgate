@@ -75,8 +75,19 @@ spec is blocked and names its conflict with an *unchanged* spec.
 **Done when:** a PR editing one spec is blocked with a comment that names a conflict with an
 *unchanged* spec and lists the fixes.
 
-## Phase 9 — Identity, projects & RBAC (the foundation for admin actions)
+## Phase 9 — Identity, projects & RBAC (the foundation for admin actions) — ✅ SHIPPED
 **Goal:** per-project roles with GitHub-derived identity.
+
+**Shipped:** neutral `@specgate/rbac` (roles viewer/developer/contributor/admin, capability matrix,
+`can`/`authorize`, `Project`/`Membership`, `ProjectStore`, `StaticIdentityProvider`); `scm-adapter`
+`GitHubIdentityProvider` (token→user via `/user`, role from repo permission); `apps/api`
+`AccessController` + project/member endpoints + `GET /projects/:id/can/:capability`; opt-in
+enforcement via `SPECGATE_AUTH=on`. Verified live: creator→admin, developer can author but not
+approve/run/override, non-admin member-management → 403, unauthenticated → denied.
+**Follow-up (not yet):** per-project scoping of the spec registry/instances + live GitHub OAuth
+login UI (needs the GitHub App); enforcement currently covers project/membership + capability
+checks, ready for Phase 10/11 to gate run/merge/override.
+
 
 - **Project model:** `Project { repo, config, members:[{user, role}] }`; durable persistent
   `StorageAdapter`; scope registry/instances/provenance per project.

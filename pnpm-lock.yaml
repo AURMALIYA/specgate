@@ -53,12 +53,18 @@ importers:
       '@specgate/provenance':
         specifier: workspace:*
         version: link:../../packages/provenance
+      '@specgate/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@specgate/registry':
         specifier: workspace:*
         version: link:../../packages/registry
       '@specgate/risk-tier':
         specifier: workspace:*
         version: link:../../packages/risk-tier
+      '@specgate/scm-adapter':
+        specifier: workspace:*
+        version: link:../../packages/scm-adapter
       '@specgate/spec-assistant':
         specifier: workspace:*
         version: link:../../packages/spec-assistant
@@ -163,6 +169,8 @@ importers:
 
   packages/provenance: {}
 
+  packages/rbac: {}
+
   packages/registry:
     dependencies:
       '@specgate/spec-schema':
@@ -178,7 +186,11 @@ importers:
         specifier: workspace:*
         version: link:../spec-schema
 
-  packages/scm-adapter: {}
+  packages/scm-adapter:
+    dependencies:
+      '@specgate/rbac':
+        specifier: workspace:*
+        version: link:../rbac
 
   packages/spec-assistant:
     dependencies:

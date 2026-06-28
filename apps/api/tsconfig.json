@@ -11,6 +11,8 @@
     { "path": "../../packages/risk-tier" },
     { "path": "../../packages/registry" },
     { "path": "../../packages/conflict-engine" },
+    { "path": "../../packages/rbac" },
+    { "path": "../../packages/scm-adapter" },
     { "path": "../../packages/spec-assistant" },
     { "path": "../../packages/llm-adapter" },
     { "path": "../../packages/workflow" },

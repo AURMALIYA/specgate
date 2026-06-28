@@ -2,7 +2,17 @@ import { existsSync, readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { extname, join, normalize } from "node:path";
 import type { WorkflowEvent } from "@specgate/workflow";
+import type { Capability, Membership } from "@specgate/rbac";
+import type { AccessController } from "./access.js";
 import type { DefectInput, SpecGateService } from "./service.js";
+
+/** Extract a bearer/token credential from the request headers. */
+function credentialOf(req: IncomingMessage): string | undefined {
+  const auth = req.headers["authorization"];
+  if (typeof auth === "string" && auth.startsWith("Bearer ")) return auth.slice(7).trim();
+  const tok = req.headers["x-specgate-token"];
+  return typeof tok === "string" ? tok : undefined;
+}
 
 function send(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { "content-type": "application/json" });
@@ -34,10 +44,13 @@ function serveStatic(res: ServerResponse, staticDir: string, pathname: string): 
 export interface ServerOptions {
   /** Directory of dashboard static files served at `/`. */
   staticDir?: string;
+  /** Optional RBAC controller — enables project + membership endpoints. */
+  access?: AccessController;
 }
 
 /** Build an HTTP server exposing the service + dashboard. */
 export function buildServer(service: SpecGateService, options: ServerOptions = {}): Server {
+  const access = options.access;
   return createServer(async (req, res) => {
     try {
       const url = new URL(req.url ?? "/", "http://localhost");
@@ -67,6 +80,37 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         return send(res, 201, { ok: true });
       }
 
+      // --- Projects & RBAC ---
+      if (access) {
+        const cred = credentialOf(req);
+        if (method === "GET" && url.pathname === "/projects") return send(res, 200, access.listProjects());
+        if (method === "POST" && url.pathname === "/projects") {
+          const body = (await readBody(req)) as { id: string; name: string; repo?: string; configPath?: string };
+          return send(res, 201, await access.createProject(cred, body));
+        }
+        if (parts[0] === "projects" && parts[1]) {
+          const projectId = decodeURIComponent(parts[1]);
+          if (method === "GET" && parts.length === 2) {
+            const p = access.getProject(projectId);
+            return p ? send(res, 200, p) : send(res, 404, { error: "not found" });
+          }
+          // GET /projects/:id/can/:capability — does the caller hold a capability?
+          if (method === "GET" && parts[2] === "can" && parts[3]) {
+            const decision = await access.check(cred, projectId, parts[3] as Capability);
+            return send(res, 200, decision);
+          }
+          if (parts[2] === "members") {
+            if (method === "POST") {
+              const m = (await readBody(req)) as Membership;
+              return send(res, 200, await access.upsertMember(cred, projectId, m));
+            }
+            if (method === "DELETE" && parts[3]) {
+              return send(res, 200, await access.removeMember(cred, projectId, decodeURIComponent(parts[3])));
+            }
+          }
+        }
+      }
+
       if (parts[0] === "instances" && parts[1]) {
         const specId = decodeURIComponent(parts[1]);
         if (method === "GET" && parts.length === 2) {
@@ -88,7 +132,8 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
 
       send(res, 404, { error: "no route" });
     } catch (err) {
-      send(res, 400, { error: (err as Error).message });
+      const status = (err as { status?: number }).status;
+      send(res, typeof status === "number" ? status : 400, { error: (err as Error).message });
     }
   });
 }
