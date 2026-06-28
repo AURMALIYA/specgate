@@ -179,12 +179,30 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
 
       if (parts[0] === "instances" && parts[1]) {
         const specId = decodeURIComponent(parts[1]);
+
+        // Capability gate (when RBAC is enabled). Returns the signed-in actor id.
+        const gateCapability = async (cap: Capability): Promise<{ allowed: boolean; actor: string; reason?: string }> => {
+          const cred = credentialOf(req, sessions);
+          if (!access?.enabled) return { allowed: true, actor: "local" };
+          const projectId = req.headers["x-specgate-project"];
+          const decision = await access.check(cred, typeof projectId === "string" ? projectId : "", cap);
+          return { allowed: decision.allowed, actor: decision.principal?.id ?? "unknown", reason: decision.reason };
+        };
+
         if (method === "GET" && parts.length === 2) {
           const inst = service.getInstance(specId);
           return inst ? send(res, 200, inst) : send(res, 404, { error: "not found" });
         }
         if (method === "POST" && parts[2] === "events") {
-          const result = service.transition(specId, (await readBody(req)) as WorkflowEvent);
+          const event = (await readBody(req)) as WorkflowEvent;
+          // Approvals are a privileged action: require the "approve" capability and
+          // record the SIGNED-IN identity (no self-asserted approver spoofing).
+          if (event.type === "approve") {
+            const g = await gateCapability("approve");
+            if (!g.allowed) return send(res, 403, { error: `approve denied: ${g.reason}` });
+            if (access?.enabled) (event as { identity: string }).identity = g.actor;
+          }
+          const result = service.transition(specId, event);
           return send(res, result.ok ? 200 : 409, result);
         }
         if (method === "GET" && parts[2] === "detail") return send(res, 200, service.specDetail(specId));
@@ -193,14 +211,6 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         if (method === "GET" && parts[2] === "run-eligibility") {
           return send(res, 200, service.runEligibility(specId));
         }
-        // Admin-only capability gate (when RBAC is enabled). Returns the actor id.
-        const gateCapability = async (cap: Capability): Promise<{ allowed: boolean; actor: string; reason?: string }> => {
-          const cred = credentialOf(req, sessions);
-          if (!access?.enabled) return { allowed: true, actor: "local" };
-          const projectId = req.headers["x-specgate-project"];
-          const decision = await access.check(cred, typeof projectId === "string" ? projectId : "", cap);
-          return { allowed: decision.allowed, actor: decision.principal?.id ?? "unknown", reason: decision.reason };
-        };
 
         if (method === "POST" && parts[2] === "run") {
           const g = await gateCapability("run");

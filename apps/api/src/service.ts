@@ -279,6 +279,7 @@ export class SpecGateService {
       eligibility: this.runEligibility(specId),
       canMerge: this.canMerge(specId),
       provenance: this.provenance.bySpec(specId),
+      snapshots: this.provenance.snapshotsForSpec(specId),
       overrides: this.overridesForSpec(specId),
     };
   }

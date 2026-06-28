@@ -157,6 +157,18 @@ token/PR for live merge.
 **Done when:** an admin overrides a block with a logged, visible justification; merge works against
 GitHub.
 
+## Phase 15 — UI accuracy + observability split — ✅ SHIPPED
+**Goal:** the dashboard conveys the engine accurately; fix the audit gaps.
+
+**Shipped:** (1) **capability-aware UI** — an active-project selector; the drawer fetches
+`/projects/:id/can/:cap` and only shows Run/Merge/Override/Approve the signed-in role holds; the
+header shows `user · role`. (2) **Approvals gated to the signed-in identity** — `approve` events now
+require the `approve` capability server-side and record the authenticated principal (no spoofing;
+covered by an integration test). (3) **Semantic advisory + drift baseline surfaced** in the spec
+drawer (the `/semantic` check on demand; artifact snapshots as the drift baseline). Nav split into
+**Specs** (co-author + registry), **Observability** (metrics + tiers + conflicts), **Audit**, and
+**Projects** (now labeled "access control only — not yet spec-partitioned"). Verified live.
+
 ## Phase 14 — Sign in with GitHub (login wired) — ✅ SHIPPED
 **Goal:** real authentication in the browser; the Phase 9 login follow-up.
 

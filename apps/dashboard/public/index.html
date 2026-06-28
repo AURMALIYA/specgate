@@ -11,19 +11,21 @@
       <h1>SpecGate</h1>
       <span class="sub">spec-driven development governance</span>
       <nav>
-        <button class="nav-btn active" data-view="overview">Overview</button>
+        <button class="nav-btn active" data-view="specs">Specs</button>
+        <button class="nav-btn" data-view="observability">Observability</button>
         <button class="nav-btn" data-view="audit">Audit</button>
         <button class="nav-btn" data-view="projects">Projects</button>
       </nav>
+      <select id="project-select" title="Active project (scopes capability checks)"></select>
       <span id="auth" class="muted"></span>
       <button id="refresh">Refresh</button>
     </header>
 
     <main>
-      <!-- OVERVIEW -->
-      <div id="view-overview" class="view">
+      <!-- SPECS (home): authoring + gate -->
+      <div id="view-specs" class="view">
         <section id="coauthor">
-          <h2>Co-author a spec</h2>
+          <h2>Co-author a spec <span id="coauthor-mode" class="muted" style="font-weight:400"></span></h2>
           <p class="hint">Paste a rough spec. The assistant revises it until it passes the gate — every revision is re-gated, so the gate stays the source of truth.</p>
           <textarea id="coauthor-input" placeholder="--- &#10;id: SPEC-0001&#10;---&#10;# 1. Linkage&#10;..."></textarea>
           <div class="row">
@@ -34,9 +36,6 @@
           <pre id="coauthor-output" class="output" hidden></pre>
         </section>
 
-        <section id="metrics"><h2>Observability</h2><div class="cards" id="metric-cards"></div></section>
-        <section id="tiers"><h2>Risk-tier distribution</h2><div class="bars" id="tier-bars"></div></section>
-        <section id="conflicts"><h2>Open conflicts</h2><div id="conflict-list"></div></section>
         <section id="registry">
           <h2>Registry <span class="muted" style="font-weight:400">— click a spec for the full engine view</span></h2>
           <table id="registry-table">
@@ -44,6 +43,13 @@
             <tbody></tbody>
           </table>
         </section>
+      </div>
+
+      <!-- OBSERVABILITY -->
+      <div id="view-observability" class="view" hidden>
+        <section id="metrics"><h2>Observability</h2><div class="cards" id="metric-cards"></div></section>
+        <section id="tiers"><h2>Risk-tier distribution</h2><div class="bars" id="tier-bars"></div></section>
+        <section id="conflicts"><h2>Open conflicts</h2><div id="conflict-list"></div></section>
       </div>
 
       <!-- AUDIT -->
@@ -57,6 +63,7 @@
       <!-- PROJECTS -->
       <div id="view-projects" class="view" hidden>
         <section><h2>Projects &amp; roles</h2>
+          <p class="hint">Access control only — specs are not yet partitioned per project (planned). Roles gate run / merge / override / approve.</p>
           <div class="row">
             <input id="proj-id" placeholder="project-id" />
             <input id="proj-name" placeholder="Project name" />
@@ -69,7 +76,6 @@
       </div>
     </main>
 
-    <!-- SPEC DETAIL DRAWER -->
     <div id="drawer" hidden>
       <div class="drawer-bg"></div>
       <div class="drawer-panel">
