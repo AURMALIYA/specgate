@@ -157,9 +157,17 @@ token/PR for live merge.
 **Done when:** an admin overrides a block with a logged, visible justification; merge works against
 GitHub.
 
-## Phase 12 — Hardening (cross-cutting, optional)
+## Phase 12 — Hardening (cross-cutting) — ✅ SHIPPED
 Durable persistence backend, secrets management, deploy docs, rate limits, observability for the
 audit log.
+
+**Shipped:** `FileProvenanceStore` (durable override audit log + provenance) and `FileProjectStore`
+(durable RBAC config), wired via `SPECGATE_DATA_DIR`; in-memory `RateLimiter` (fixed-window per
+credential/address) via `SPECGATE_RATE_LIMIT`; `GET /audit` exposes the override log; `Dockerfile`,
+`.env.example`, and `DEPLOYMENT.md`. Verified: the override audit log survives a restart (reloaded
+from `provenance.json`); rate limit returns 429 past budget. **Durable state = audit log + RBAC
+config**; the spec registry is derived (re-ingested from git). **Documented follow-up:** persist
+in-flight workflow-instance state for full delivery-loop restart-survival.
 
 ---
 

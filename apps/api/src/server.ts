@@ -4,6 +4,7 @@ import { extname, join, normalize } from "node:path";
 import type { WorkflowEvent } from "@specgate/workflow";
 import type { Capability, Membership } from "@specgate/rbac";
 import type { AccessController } from "./access.js";
+import type { RateLimiter } from "./ratelimit.js";
 import type { DefectInput, SpecGateService } from "./service.js";
 
 /** Extract a bearer/token credential from the request headers. */
@@ -46,6 +47,8 @@ export interface ServerOptions {
   staticDir?: string;
   /** Optional RBAC controller — enables project + membership endpoints. */
   access?: AccessController;
+  /** Optional rate limiter applied to all routes except /health. */
+  rateLimiter?: RateLimiter;
 }
 
 /** Build an HTTP server exposing the service + dashboard. */
@@ -59,6 +62,16 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
 
       // --- API routes ---
       if (method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
+
+      if (options.rateLimiter) {
+        const key = credentialOf(req) ?? req.socket.remoteAddress ?? "anon";
+        if (!options.rateLimiter.allow(key, Date.now())) {
+          return send(res, 429, { error: "rate limit exceeded" });
+        }
+      }
+
+      // Audit log (override events) — observability for the audit trail.
+      if (method === "GET" && url.pathname === "/audit") return send(res, 200, service.provenance.overrides());
       if (method === "GET" && url.pathname === "/metrics") return send(res, 200, service.metrics());
       if (method === "GET" && url.pathname === "/instances") return send(res, 200, service.listInstances());
       if (method === "GET" && url.pathname === "/registry") return send(res, 200, service.registrySpecs());

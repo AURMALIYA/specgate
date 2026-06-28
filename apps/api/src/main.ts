@@ -3,9 +3,12 @@ import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate
 import { DryRunMerger, GitHubHandoffTarget, GitHubIdentityProvider, GitHubMerger, type PullRequestMerger } from "@specgate/scm-adapter";
 import { ReplitTarget } from "@specgate/replit-adapter";
 import { DryRunTarget, type GenerationTarget } from "@specgate/dispatch";
-import { StaticIdentityProvider, type IdentityProvider } from "@specgate/rbac";
+import { FileProjectStore, StaticIdentityProvider, type IdentityProvider, type ProjectStore } from "@specgate/rbac";
+import { FileProvenanceStore, type ProvenanceStore } from "@specgate/provenance";
 import { LocalSpecAssistantClient } from "@specgate/spec-assistant";
+import { join } from "node:path";
 import { AccessController } from "./access.js";
+import { RateLimiter } from "./ratelimit.js";
 import { buildServer } from "./server.js";
 import { SpecGateService } from "./service.js";
 
@@ -43,6 +46,17 @@ if ((targetKind === "git" || targetKind === "replit") && ghToken && repo) {
       : handoff;
 }
 
+// Durable persistence (audit log + RBAC config) when SPECGATE_DATA_DIR is set;
+// in-memory otherwise. Specs/registry are derived from git (re-ingested), so the
+// durable state is the override audit log and the project/role config.
+const dataDir = process.env["SPECGATE_DATA_DIR"];
+const provenanceStore: ProvenanceStore | undefined = dataDir
+  ? new FileProvenanceStore(join(dataDir, "provenance.json"))
+  : undefined;
+const projectStore: ProjectStore | undefined = dataDir
+  ? new FileProjectStore(join(dataDir, "projects.json"))
+  : undefined;
+
 // Merge: real GitHub merge when a token is present, else a no-op dry-run.
 const merger: PullRequestMerger = ghToken ? new GitHubMerger({ token: ghToken }) : new DryRunMerger();
 
@@ -51,6 +65,7 @@ const service = new SpecGateService(config, {
   assistantClient,
   generationTarget,
   merger,
+  provenanceStore,
   defaultRepo: repo,
 });
 
@@ -65,13 +80,18 @@ const identity: IdentityProvider =
         "dev-contributor": { id: "contrib", name: "Dev Contributor" },
         "dev-developer": { id: "developer", name: "Dev Developer" },
       });
-const access = new AccessController(identity, undefined, authEnabled);
+const access = new AccessController(identity, projectStore, authEnabled);
 
-const server = buildServer(service, { staticDir, access });
+// Optional fixed-window rate limiting (requests/min per credential or address).
+const rateLimit = Number(process.env["SPECGATE_RATE_LIMIT"] ?? "");
+const rateLimiter = Number.isInteger(rateLimit) && rateLimit > 0 ? new RateLimiter(60_000, rateLimit) : undefined;
+
+const server = buildServer(service, { staticDir, access, rateLimiter });
 
 server.listen(port, () => {
   process.stdout.write(
     `SpecGate API + dashboard on :${port} (config: ${configPath}; co-author: ${assistantKind}; ` +
-      `auth: ${authEnabled ? "on" : "off"})\n`,
+      `auth: ${authEnabled ? "on" : "off"}; persist: ${dataDir ?? "memory"}; ` +
+      `rate-limit: ${rateLimiter ? `${rateLimit}/min` : "off"})\n`,
   );
 });

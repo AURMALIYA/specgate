@@ -1,5 +1,8 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { detectDrift, hashContent, InMemoryProvenanceStore } from "../src/index.js";
+import { detectDrift, FileProvenanceStore, hashContent, InMemoryProvenanceStore } from "../src/index.js";
 
 describe("provenance store", () => {
   it("records generations and returns the latest per spec", () => {
@@ -51,5 +54,19 @@ describe("override audit log", () => {
     expect(store.overrides()).toHaveLength(2);
     expect(store.overridesForSpec("S1")).toHaveLength(1);
     expect(store.overrides().filter((o) => o.safetyInvariant)).toHaveLength(1);
+  });
+});
+
+describe("FileProvenanceStore (durable)", () => {
+  it("persists records + overrides across instances (survives restart)", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "sg-prov-")), "prov.json");
+    const s1 = new FileProvenanceStore(path);
+    s1.record({ specId: "S1", specContentHash: "h", pinnedModel: "m", promptContextRef: "c", timestamp: "t", generatedArtifactRefs: [] });
+    s1.recordOverride({ specId: "S1", actor: "a", at: "t", justification: "j", coveredCodes: ["x"], safetyInvariant: true });
+
+    const s2 = new FileProvenanceStore(path); // fresh instance reads the file
+    expect(s2.all()).toHaveLength(1);
+    expect(s2.overridesForSpec("S1")).toHaveLength(1);
+    expect(s2.overrides()[0]?.safetyInvariant).toBe(true);
   });
 });

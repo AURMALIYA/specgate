@@ -1,7 +1,11 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   authorize,
   can,
+  FileProjectStore,
   InMemoryProjectStore,
   roleInProject,
   StaticIdentityProvider,
@@ -57,5 +61,19 @@ describe("StaticIdentityProvider", () => {
     expect(await idp.resolveRole({ id: "alice" }, project)).toBe("admin");
     expect(await idp.resolveRole({ id: "dev" }, project)).toBe("developer");
     expect(await idp.resolveRole({ id: "stranger" }, project)).toBeNull();
+  });
+});
+
+describe("FileProjectStore (durable)", () => {
+  it("persists projects + memberships across instances", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "sg-proj-")), "projects.json");
+    const s1 = new FileProjectStore(path);
+    s1.create({ id: "p1", name: "Proj", members: [{ userId: "alice", role: "admin" }] });
+    s1.upsertMember("p1", { userId: "bob", role: "developer" });
+
+    const s2 = new FileProjectStore(path); // reload from disk
+    expect(s2.all()).toHaveLength(1);
+    expect(roleInProject(s2.get("p1")!, "alice")).toBe("admin");
+    expect(roleInProject(s2.get("p1")!, "bob")).toBe("developer");
   });
 });

@@ -36,6 +36,7 @@ import {
   type DriftFinding,
   type OverrideEvent,
   type ProvenanceRecord,
+  type ProvenanceStore,
 } from "@specgate/provenance";
 import { DryRunMerger, type MergeResult, type PullRequestMerger } from "@specgate/scm-adapter";
 import { isSafetyInvariant } from "./safety.js";
@@ -106,7 +107,7 @@ export class SpecGateService {
   private readonly defects: DefectInput[] = [];
   private readonly costs: number[] = [];
   readonly registry: Registry;
-  readonly provenance = new InMemoryProvenanceStore();
+  readonly provenance: ProvenanceStore;
   private readonly now: () => string;
   private readonly semanticClient?: SemanticClient;
   private readonly assistantClient?: SpecAssistantClient;
@@ -124,10 +125,12 @@ export class SpecGateService {
       assistantClient?: SpecAssistantClient;
       generationTarget?: GenerationTarget;
       merger?: PullRequestMerger;
+      provenanceStore?: ProvenanceStore;
       defaultRepo?: string;
     } = {},
   ) {
     this.registry = new Registry(opts.store ?? new InMemoryStore());
+    this.provenance = opts.provenanceStore ?? new InMemoryProvenanceStore();
     this.now = opts.now ?? (() => new Date().toISOString());
     this.semanticClient = opts.semanticClient;
     this.assistantClient = opts.assistantClient;
