@@ -40,6 +40,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<"
 function showView(name) {
   for (const v of document.querySelectorAll(".view")) v.hidden = v.id !== `view-${name}`;
   for (const b of document.querySelectorAll(".nav-btn")) b.classList.toggle("active", b.dataset.view === name);
+  if (name === "repos") loadRepos();
   if (name === "audit") loadAudit();
   if (name === "projects") loadProjects();
 }
@@ -101,6 +102,8 @@ function renderRegistry(specs, instances) {
       el("td", {}, el("span", { class: `pill ${enforced}` }, enforced), inst && inst.finalTier !== declared ? el("span", { class: "badge esc", style: "margin-left:6px" }, "esc") : null),
       el("td", {}, inst?.state ?? "—")));
   }
+  const sec = document.getElementById("opened-section");
+  if (sec) sec.hidden = specs.length === 0;
 }
 
 // ---------- capabilities ----------
@@ -348,6 +351,42 @@ async function loadProjects() {
   } catch (err) { wrap.innerHTML = `<p class="empty">${esc(err.message)}</p>`; }
 }
 
+// ---------- repos (repo-first browsing) ----------
+async function loadRepos() {
+  const status = document.getElementById("repo-status"), list = document.getElementById("repo-list");
+  status.textContent = "Loading your repositories…"; list.innerHTML = "";
+  try {
+    const repos = await getJSON("/github/repos");
+    status.textContent = repos.length ? "" : "";
+    if (!repos.length) return list.append(el("p", { class: "empty" }, "No repositories."));
+    for (const r of repos)
+      list.append(el("button", { class: "repo-row secondary", "data-repo": r.fullName }, `${r.fullName}${r.private ? " 🔒" : ""}`));
+  } catch (err) {
+    status.innerHTML = `<span class="empty">Sign in with GitHub to browse your repositories.</span>`;
+  }
+}
+async function selectRepo(fullName) {
+  document.getElementById("repo-specs-section").hidden = false;
+  document.getElementById("repo-specs-name").textContent = fullName;
+  for (const b of document.querySelectorAll(".repo-row")) b.classList.toggle("active", b.dataset.repo === fullName);
+  const wrap = document.getElementById("repo-specs"); wrap.innerHTML = "Loading specs…";
+  try {
+    const paths = await getJSON(`/github/specs?repo=${encodeURIComponent(fullName)}`);
+    wrap.innerHTML = "";
+    if (!paths.length) return wrap.append(el("p", { class: "empty" }, "No specs under specs/ in this repo."));
+    for (const p of paths) wrap.append(el("button", { class: "spec-row secondary", "data-repo": fullName, "data-path": p }, p));
+  } catch (err) { wrap.innerHTML = `<p class="empty">${esc(err.message)}</p>`; }
+}
+async function openRepoSpec(repo, path) {
+  try {
+    const r = await api("/github/ingest", "POST", { repo, path });
+    if (!r.ok) return alert(r.json.error || "could not load spec");
+    await refresh();
+    document.getElementById("opened-section").hidden = false;
+    openDrawer(r.json.specId);
+  } catch (err) { alert(err.message); }
+}
+
 // ---------- auth + active project ----------
 async function loadAuth() {
   let oauth = false; currentUser = null;
@@ -371,6 +410,7 @@ async function loadAuth() {
     const out = el("button", { class: "secondary" }, "Sign out");
     out.onclick = async () => { await api("/auth/logout"); loadAuth(); };
     box.append(out);
+    loadRepos(); // refresh the repo list now that we have a token
   } else {
     const b = el("button", { class: "secondary" }, oauth ? "Sign in with GitHub" : "Sign in");
     b.onclick = oauth
@@ -396,6 +436,10 @@ document.getElementById("proj-create").addEventListener("click", async () => {
   status.textContent = r.ok ? "created" : (r.json.error || "failed"); loadProjects(); loadAuth();
 });
 document.addEventListener("click", async (e) => {
+  const repo = e.target.closest?.(".repo-row");
+  if (repo) return selectRepo(repo.dataset.repo);
+  const specRow = e.target.closest?.(".spec-row");
+  if (specRow) return openRepoSpec(specRow.dataset.repo, specRow.dataset.path);
   const row = e.target.closest?.("#registry-table tbody tr");
   if (row && row.dataset.spec) return openDrawer(row.dataset.spec);
   const act = e.target.closest?.("button.act");
@@ -411,3 +455,4 @@ document.addEventListener("click", async (e) => {
 
 refresh();
 loadAuth();
+loadRepos();

@@ -157,6 +157,17 @@ token/PR for live merge.
 **Done when:** an admin overrides a block with a logged, visible justification; merge works against
 GitHub.
 
+## Phase 16 — Repo-first UX — ✅ SHIPPED
+**Goal:** sign in → pick a repo → see its specs → work on a spec; non-spec files never shown.
+
+**Shipped:** `scm-adapter` `GitHubRepos` (listRepos, listSpecPaths filtered to `specs/**/*.md`,
+getSpecFile); `apps/api` `/github/repos`, `/github/specs?repo=`, `/github/ingest` (fetch from GitHub
++ ingest so the gate/tier/workflow apply), all using the signed-in session's token; dashboard nav is
+**repo-first** — Repos (home: your repos → a repo's specs → open a spec into the engine drawer),
+Author (co-author), Observability, Audit, Projects. **Verified live against AURMALIYA's GitHub:**
+listed 5 repos, showed only the 3 specs under `specs/` in `specgate`, and opened/gated one — non-spec
+content (src, config, README) never surfaced.
+
 ## Phase 15 — UI accuracy + observability split — ✅ SHIPPED
 **Goal:** the dashboard conveys the engine accurately; fix the audit gaps.
 

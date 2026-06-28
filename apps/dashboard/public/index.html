@@ -11,7 +11,8 @@
       <h1>SpecGate</h1>
       <span class="sub">spec-driven development governance</span>
       <nav>
-        <button class="nav-btn active" data-view="specs">Specs</button>
+        <button class="nav-btn active" data-view="repos">Repos</button>
+        <button class="nav-btn" data-view="author">Author</button>
         <button class="nav-btn" data-view="observability">Observability</button>
         <button class="nav-btn" data-view="audit">Audit</button>
         <button class="nav-btn" data-view="projects">Projects</button>
@@ -22,10 +23,31 @@
     </header>
 
     <main>
-      <!-- SPECS (home): authoring + gate -->
-      <div id="view-specs" class="view">
+      <!-- REPOS (home): repo-first browsing -->
+      <div id="view-repos" class="view">
+        <section>
+          <h2>Your repositories</h2>
+          <p class="hint">Pick a repo to see its specs. Only specs (Markdown under <code>specs/</code>) are shown — the rest of the repo stays hidden.</p>
+          <div id="repo-status" class="muted"></div>
+          <div id="repo-list"></div>
+        </section>
+        <section id="repo-specs-section" hidden>
+          <h2>Specs in <span id="repo-specs-name"></span></h2>
+          <div id="repo-specs"></div>
+        </section>
+        <section id="opened-section" hidden>
+          <h2>Opened specs <span class="muted" style="font-weight:400">— click for the full engine view</span></h2>
+          <table id="registry-table">
+            <thead><tr><th>Spec</th><th>Title</th><th>Declared</th><th>Enforced</th><th>State</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- AUTHOR: co-author a spec -->
+      <div id="view-author" class="view" hidden>
         <section id="coauthor">
-          <h2>Co-author a spec <span id="coauthor-mode" class="muted" style="font-weight:400"></span></h2>
+          <h2>Co-author a spec</h2>
           <p class="hint">Paste a rough spec. The assistant revises it until it passes the gate — every revision is re-gated, so the gate stays the source of truth.</p>
           <textarea id="coauthor-input" placeholder="--- &#10;id: SPEC-0001&#10;---&#10;# 1. Linkage&#10;..."></textarea>
           <div class="row">
@@ -34,14 +56,6 @@
             <span id="coauthor-status" class="muted"></span>
           </div>
           <pre id="coauthor-output" class="output" hidden></pre>
-        </section>
-
-        <section id="registry">
-          <h2>Registry <span class="muted" style="font-weight:400">— click a spec for the full engine view</span></h2>
-          <table id="registry-table">
-            <thead><tr><th>Spec</th><th>Title</th><th>Declared</th><th>Enforced</th><th>State</th></tr></thead>
-            <tbody></tbody>
-          </table>
         </section>
       </div>
 
@@ -55,7 +69,7 @@
       <!-- AUDIT -->
       <div id="view-audit" class="view" hidden>
         <section><h2>Override audit log</h2>
-          <p class="hint">Every admin override is immutable and attributable — this is what keeps "spec is a contract" meaningful under full-override.</p>
+          <p class="hint">Every admin override is immutable and attributable.</p>
           <div id="audit-list"></div>
         </section>
       </div>
@@ -63,7 +77,7 @@
       <!-- PROJECTS -->
       <div id="view-projects" class="view" hidden>
         <section><h2>Projects &amp; roles</h2>
-          <p class="hint">Access control only — specs are not yet partitioned per project (planned). Roles gate run / merge / override / approve.</p>
+          <p class="hint">Access control. Roles gate run / merge / override / approve.</p>
           <div class="row">
             <input id="proj-id" placeholder="project-id" />
             <input id="proj-name" placeholder="Project name" />

@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, normalize } from "node:path";
 import type { WorkflowEvent } from "@specgate/workflow";
 import type { Capability, Membership } from "@specgate/rbac";
-import type { GitHubOAuth } from "@specgate/scm-adapter";
+import { GitHubRepos, type GitHubOAuth } from "@specgate/scm-adapter";
 import type { AccessController } from "./access.js";
 import type { RateLimiter } from "./ratelimit.js";
 import { readCookie, SESSION_COOKIE, setCookie, clearCookie, type SessionStore } from "./sessions.js";
@@ -120,6 +120,27 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
           const s = sessions.create(principal, token);
           res.writeHead(302, { Location: "/", "set-cookie": setCookie(SESSION_COOKIE, s.id) });
           return res.end();
+        }
+      }
+
+      // --- Repo-first browsing (uses the signed-in user's GitHub token) ---
+      if (url.pathname.startsWith("/github/")) {
+        const token = credentialOf(req, sessions);
+        if (!token) return send(res, 401, { error: "sign in with GitHub first" });
+        const gh = new GitHubRepos({ token });
+        if (method === "GET" && url.pathname === "/github/repos") {
+          return send(res, 200, await gh.listRepos());
+        }
+        if (method === "GET" && url.pathname === "/github/specs") {
+          const repo = url.searchParams.get("repo");
+          if (!repo) return send(res, 400, { error: "repo query param required" });
+          return send(res, 200, await gh.listSpecPaths(repo));
+        }
+        // Fetch a spec from GitHub and ingest it so the gate/tier/workflow apply.
+        if (method === "POST" && url.pathname === "/github/ingest") {
+          const body = (await readBody(req)) as { repo: string; path: string };
+          const raw = await gh.getSpecFile(body.repo, body.path);
+          return send(res, 201, service.ingest(raw, `${body.repo}/${body.path}`));
         }
       }
 
