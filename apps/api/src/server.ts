@@ -123,6 +123,22 @@ export function buildServer(service: SpecGateService, options: ServerOptions = {
         }
         if (method === "POST" && parts[2] === "verify") return send(res, 200, service.verify(specId));
         if (method === "POST" && parts[2] === "semantic") return send(res, 200, await service.semantic(specId));
+        if (method === "GET" && parts[2] === "run-eligibility") {
+          return send(res, 200, service.runEligibility(specId));
+        }
+        if (method === "POST" && parts[2] === "run") {
+          // Admin-only: gate on the "run" capability when RBAC is enabled.
+          if (access?.enabled) {
+            const projectId = req.headers["x-specgate-project"];
+            const decision = await access.check(
+              credentialOf(req),
+              typeof projectId === "string" ? projectId : "",
+              "run",
+            );
+            if (!decision.allowed) return send(res, 403, { error: `run denied: ${decision.reason}` });
+          }
+          return send(res, 200, await service.run(specId));
+        }
       }
 
       // --- Dashboard static files ---

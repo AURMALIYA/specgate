@@ -80,6 +80,8 @@ function renderRegistry(specs) {
   }
   for (const s of specs) {
     const tier = s.frontmatter.risk_tier;
+    const runBtn = el("button", { class: "run-btn", "data-spec": s.id }, "Run");
+    const status = el("span", { class: "muted", id: `run-${s.id}` });
     tbody.append(
       el("tr", {},
         el("td", {}, s.id),
@@ -87,8 +89,28 @@ function renderRegistry(specs) {
         el("td", {}, el("span", { class: `pill ${tier}` }, tier)),
         el("td", {}, (s.provides || []).join(", ") || "—"),
         el("td", {}, (s.frontmatter.change_categories || []).join(", ")),
+        el("td", {}, runBtn, status),
       ),
     );
+  }
+}
+
+async function runSpec(specId) {
+  const status = document.getElementById(`run-${specId}`);
+  status.textContent = " checking…";
+  try {
+    const elig = await getJSON(`/instances/${encodeURIComponent(specId)}/run-eligibility`);
+    if (!elig.eligible) {
+      status.textContent = ` not eligible: ${elig.reasons.join("; ")}`;
+      return;
+    }
+    const res = await fetch(`/instances/${encodeURIComponent(specId)}/run`, { method: "POST" });
+    const body = await res.json();
+    if (!res.ok) { status.textContent = ` ${body.error || res.status}`; return; }
+    const d = body.dispatch;
+    status.innerHTML = ` ▶ dispatched to <b>${d.target}</b> (${d.handle})${d.url ? ` · <a href="${d.url}" target="_blank">open</a>` : ""}`;
+  } catch (err) {
+    status.textContent = ` ${err.message}`;
   }
 }
 
@@ -141,4 +163,8 @@ async function coauthor() {
 
 document.getElementById("refresh").addEventListener("click", refresh);
 document.getElementById("coauthor-run").addEventListener("click", coauthor);
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest?.(".run-btn");
+  if (btn) runSpec(btn.getAttribute("data-spec"));
+});
 refresh();

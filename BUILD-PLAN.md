@@ -102,8 +102,19 @@ checks, ready for Phase 10/11 to gate run/merge/override.
 **Done when:** a non-admin is refused run/merge/override; an admin is allowed; roles resolve from
 (mock) identity.
 
-## Phase 10 — Dispatch spine + git-handoff + "Run" (admin runs the code)
+## Phase 10 — Dispatch spine + git-handoff + "Run" (admin runs the code) — ✅ SHIPPED
 **Goal:** an admin runs the code from the UX once a spec is APPROVED and conflict-free.
+
+**Shipped:** neutral `@specgate/dispatch` (`GenerationBrief`, `GenerationTarget`, `runEligibility`,
+`DryRunTarget`); `scm-adapter` `GitHubHandoffTarget` (seeds a branch + brief file + PR); new
+`@specgate/replit-adapter` `ReplitTarget` (composes the handoff, returns the Replit import URL,
+dry-run by default, live API behind a token); `apps/api` `Service.run`/`runEligibility` +
+`POST /instances/:id/run` (gated on the `run` capability) + `GET …/run-eligibility`; provenance
+extended with `{dispatchTarget, dispatchHandle, gitRef}`; dashboard **Run** button (eligibility-aware).
+Verified: DRAFT → not eligible; APPROVED → dispatched (dry-run), state → GENERATING, provenance
+recorded. **Needs setup:** `GITHUB_TOKEN` + `SPECGATE_REPO` for real git-handoff; `REPLIT_API_*`
+for the live Replit kicker.
+
 
 - **Eligibility predicate:** gate has 0 blocks **and** no open cross-spec conflicts/dangling deps
   **and** state == APPROVED.

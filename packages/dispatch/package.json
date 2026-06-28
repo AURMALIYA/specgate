@@ -1,5 +1,5 @@
 {
-  "name": "@specgate/scm-adapter",
+  "name": "@specgate/dispatch",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,5 @@
   },
   "scripts": {
     "build": "tsc --build"
-  },
-  "dependencies": {
-    "@specgate/dispatch": "workspace:*",
-    "@specgate/rbac": "workspace:*"
   }
 }

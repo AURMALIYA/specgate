@@ -15,6 +15,8 @@
     "@specgate/risk-tier": "workspace:*",
     "@specgate/registry": "workspace:*",
     "@specgate/conflict-engine": "workspace:*",
+    "@specgate/dispatch": "workspace:*",
+    "@specgate/replit-adapter": "workspace:*",
     "@specgate/rbac": "workspace:*",
     "@specgate/scm-adapter": "workspace:*",
     "@specgate/spec-assistant": "workspace:*",

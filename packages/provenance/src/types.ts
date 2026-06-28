@@ -12,6 +12,12 @@ export interface ProvenanceRecord {
   timestamp: string;
   /** References to the generated artifacts. */
   generatedArtifactRefs: string[];
+  /** Dispatch target this generation was sent to (e.g. "git-handoff", "replit"). */
+  dispatchTarget?: string;
+  /** Tracking handle returned by the target (branch name, run id, …). */
+  dispatchHandle?: string;
+  /** Git ref the spec was seeded onto, when a git-based target was used. */
+  gitRef?: string;
 }
 
 /** A hash snapshot of a generated artifact, captured at generation time. */

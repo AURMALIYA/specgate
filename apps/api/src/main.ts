@@ -1,6 +1,8 @@
 import { loadConfig } from "@specgate/config";
 import { AnthropicSemanticClient, AnthropicSpecAssistantClient } from "@specgate/llm-adapter";
-import { GitHubIdentityProvider } from "@specgate/scm-adapter";
+import { GitHubHandoffTarget, GitHubIdentityProvider } from "@specgate/scm-adapter";
+import { ReplitTarget } from "@specgate/replit-adapter";
+import { DryRunTarget, type GenerationTarget } from "@specgate/dispatch";
 import { StaticIdentityProvider, type IdentityProvider } from "@specgate/rbac";
 import { LocalSpecAssistantClient } from "@specgate/spec-assistant";
 import { AccessController } from "./access.js";
@@ -26,7 +28,27 @@ const assistantClient =
     : new LocalSpecAssistantClient(config);
 const assistantKind = config.semantic?.model && hasKey ? "model" : "local (offline, rule-based)";
 
-const service = new SpecGateService(config, { semanticClient, assistantClient });
+// Generation target (admin "Run"): dry-run by default. With SPECGATE_TARGET=git
+// or =replit plus a GITHUB_TOKEN + SPECGATE_REPO, dispatch seeds a real branch
+// (Replit additionally returns an import URL; live API call needs REPLIT_API_*).
+const repo = process.env["SPECGATE_REPO"];
+const ghToken = process.env["GITHUB_TOKEN"];
+const targetKind = process.env["SPECGATE_TARGET"] ?? "dry-run";
+let generationTarget: GenerationTarget = new DryRunTarget();
+if ((targetKind === "git" || targetKind === "replit") && ghToken && repo) {
+  const handoff = new GitHubHandoffTarget({ token: ghToken, repo });
+  generationTarget =
+    targetKind === "replit"
+      ? new ReplitTarget({ handoff, token: process.env["REPLIT_API_TOKEN"], apiUrl: process.env["REPLIT_API_URL"] })
+      : handoff;
+}
+
+const service = new SpecGateService(config, {
+  semanticClient,
+  assistantClient,
+  generationTarget,
+  defaultRepo: repo,
+});
 
 // RBAC: GitHub identity in production; a static provider for local/dev. Enforcement
 // is opt-in via SPECGATE_AUTH=on (off keeps the keyless local dashboard working).

@@ -14,6 +14,14 @@ import {
 import { runHarness, type HarnessResult } from "@specgate/verification";
 import { coAuthorSpec, type CoAuthorResult, type SpecAssistantClient } from "@specgate/spec-assistant";
 import {
+  DryRunTarget,
+  runEligibility,
+  type DispatchResult,
+  type Eligibility,
+  type GenerationBrief,
+  type GenerationTarget,
+} from "@specgate/dispatch";
+import {
   runDeterministicConflicts,
   runSemanticConflicts,
   selectRelatedSpecIds,
@@ -95,6 +103,9 @@ export class SpecGateService {
   private readonly now: () => string;
   private readonly semanticClient?: SemanticClient;
   private readonly assistantClient?: SpecAssistantClient;
+  private readonly target: GenerationTarget;
+  /** Default repo ("owner/name") for git-based dispatch, when not per-spec. */
+  private readonly defaultRepo?: string;
 
   constructor(
     private readonly config: SpecGateConfig,
@@ -103,12 +114,16 @@ export class SpecGateService {
       store?: InMemoryStore;
       semanticClient?: SemanticClient;
       assistantClient?: SpecAssistantClient;
+      generationTarget?: GenerationTarget;
+      defaultRepo?: string;
     } = {},
   ) {
     this.registry = new Registry(opts.store ?? new InMemoryStore());
     this.now = opts.now ?? (() => new Date().toISOString());
     this.semanticClient = opts.semanticClient;
     this.assistantClient = opts.assistantClient;
+    this.target = opts.generationTarget ?? new DryRunTarget();
+    this.defaultRepo = opts.defaultRepo;
   }
 
   /** Whether an LLM spec co-author is wired in. */
@@ -165,6 +180,60 @@ export class SpecGateService {
     const entry = this.specs.get(specId);
     if (!entry) throw new Error(`unknown spec ${specId}`);
     return runHarness({ spec: entry.parsed, finalTier: entry.tier.finalTier, config: this.config });
+  }
+
+  /** Is the spec eligible to run? (APPROVED + clean gate + no blocking conflicts.) */
+  runEligibility(specId: string): Eligibility {
+    const entry = this.specs.get(specId);
+    const instance = this.instances.get(specId);
+    if (!entry || !instance) throw new Error(`unknown spec ${specId}`);
+    const gate = runGate({ raw: entry.raw, config: this.config });
+    const blockingConflicts = this.conflicts().filter(
+      (c) => c.severity === "block" && c.specIds.includes(specId),
+    ).length;
+    return runEligibility({ state: instance.state, gateOk: gate.ok, blockingConflicts });
+  }
+
+  /**
+   * Run the code from an approved spec: check eligibility, dispatch the spec to
+   * the generation target, record provenance, and move APPROVED → GENERATING.
+   * Returns the eligibility verdict; dispatch only happens when eligible.
+   */
+  async run(specId: string, at?: string): Promise<{ eligibility: Eligibility; dispatch?: DispatchResult; instance: WorkflowInstance }> {
+    const entry = this.specs.get(specId);
+    const instance = this.instances.get(specId);
+    if (!entry || !instance) throw new Error(`unknown spec ${specId}`);
+
+    const eligibility = this.runEligibility(specId);
+    if (!eligibility.eligible) return { eligibility, instance };
+
+    const timestamp = at ?? this.now();
+    const brief: GenerationBrief = {
+      specId,
+      title: entry.parsed.frontmatter.title,
+      specContentHash: entry.parsed.contentHash,
+      specMarkdown: entry.raw,
+      tier: entry.tier.finalTier,
+      requiredApproverRoles: entry.tier.requiredApproverRoles,
+      repo: this.defaultRepo,
+    };
+    const dispatch = await this.target.dispatch(brief);
+
+    this.provenance.record({
+      specId,
+      specContentHash: entry.parsed.contentHash,
+      pinnedModel: this.config.semantic?.model ?? "unset",
+      promptContextRef: brief.promptContextRef ?? "",
+      timestamp,
+      generatedArtifactRefs: [],
+      dispatchTarget: dispatch.target,
+      dispatchHandle: dispatch.handle,
+      gitRef: dispatch.gitRef,
+    });
+
+    const transition = applyEvent(instance, { type: "startGeneration", generatorId: `target:${dispatch.target}`, at: timestamp });
+    if (transition.ok) this.instances.set(specId, transition.instance);
+    return { eligibility, dispatch, instance: transition.ok ? transition.instance : instance };
   }
 
   /** Record generation provenance and capture artifact snapshots for drift. */

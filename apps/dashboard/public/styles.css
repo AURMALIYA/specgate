@@ -98,3 +98,5 @@ textarea {
 }
 .output .pass { color: var(--green); }
 .output .fail { color: var(--red); }
+.run-btn { padding: 2px 10px; font-size: 12px; }
+#registry td a { color: var(--accent); }

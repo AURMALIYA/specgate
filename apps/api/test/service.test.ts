@@ -79,6 +79,31 @@ describe("SpecGateService — full delivery loop", () => {
     expect(result.passed).toBe(true);
   });
 
+  it("runs an eligible spec (dispatch + provenance + APPROVED->GENERATING); blocks an ineligible one", async () => {
+    const svc = new SpecGateService(cfg, { now: () => "t" }); // default DryRunTarget
+    const { specId } = svc.ingest(read("config/example-org/specs/storefront-promotion-badge.md"));
+
+    // Not eligible before approval.
+    const before = await svc.run(specId);
+    expect(before.eligibility.eligible).toBe(false);
+    expect(before.dispatch).toBeUndefined();
+    expect(svc.getInstance(specId)!.state).toBe("DRAFT");
+
+    // Drive to APPROVED (GREEN needs one frontend-peer).
+    svc.transition(specId, { type: "submit", at: "t" });
+    svc.transition(specId, { type: "approve", role: "frontend-peer", identity: "p", at: "t" });
+    expect(svc.getInstance(specId)!.state).toBe("APPROVED");
+
+    // Now eligible -> dispatch + transition.
+    const ran = await svc.run(specId);
+    expect(ran.eligibility.eligible).toBe(true);
+    expect(ran.dispatch?.target).toBe("dry-run");
+    expect(ran.instance.state).toBe("GENERATING");
+    const prov = svc.provenance.bySpec(specId)[0];
+    expect(prov?.dispatchTarget).toBe("dry-run");
+    expect(prov?.dispatchHandle).toContain(specId);
+  });
+
   it("a RED spec cannot reach APPROVED without all three RED approvers", () => {
     const svc = freshService();
     const { specId, tier } = svc.ingest(read("config/example-org/specs-conflict/hidden-red-merchant-roles.md"), "roles.md");
